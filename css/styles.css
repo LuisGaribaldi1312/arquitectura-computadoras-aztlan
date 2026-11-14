@@ -1498,3 +1498,481 @@ body {
   line-height: 1.5;
   margin: 0;
 }
+/* ====================================================================
+   ESTILOS DE LABORATORIOS Y CIRCUITOS INTERACTIVOS EN SILICIO
+   ==================================================================== */
+.interactive-lab-card {
+  background: #08111e;
+  border: 1px solid var(--border-color);
+  border-top: 3px solid var(--accent-cyan);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.lab-title-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
+.lab-title-bar h4 {
+  font-size: 18px;
+  color: #ffffff;
+}
+
+.lab-instruction {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 20px;
+  background: rgba(14, 165, 233, 0.08);
+  border-left: 3px solid var(--accent-cyan);
+  padding: 10px 14px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.circuit-board-box {
+  background: #050b14;
+  border: 1px solid #1e3352;
+  border-radius: var(--radius-md);
+  padding: 18px;
+}
+
+.circuit-board-box h5 {
+  font-size: 14px;
+  color: var(--accent-gold);
+  margin-bottom: 14px;
+}
+
+.vn-circuit-diagram, .hv-dual-circuit {
+  display: grid;
+  grid-template-columns: 220px 1fr 240px;
+  gap: 16px;
+  align-items: center;
+  background: #03070d;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+}
+
+.hw-module {
+  background: #0f1c30;
+  border: 1px solid #2563eb;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.hw-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.hw-reg {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: #070d18;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-top: 4px;
+  border: 1px solid #1e3352;
+}
+
+.hw-bus-line {
+  background: #112035;
+  border: 2px dashed #0284c7;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.hw-bus-line.bus-busy {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+}
+
+.hw-bus-line.bus-data-mode {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+.bus-state-indicator {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.highlight-green {
+  background: rgba(16, 185, 129, 0.25) !important;
+  color: #34d399 !important;
+  border-color: #10b981 !important;
+  font-weight: bold;
+}
+
+.bus-active-pulse {
+  border-color: #34d399 !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4) !important;
+}
+
+.lab-switch-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.lab-feedback-banner {
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: #0f1c30;
+  border: 1px solid var(--border-color);
+  color: #cbd5e1;
+  flex: 1;
+}
+
+.lab-feedback-banner.success {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.lab-feedback-banner.error {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+.lab-verification-footer {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-top: 24px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 18px;
+  flex-wrap: wrap;
+}
+
+/* Pipeline styles */
+.assembly-code-box {
+  background: #050b14;
+  border: 1px solid #1e3352;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: #38bdf8;
+  margin-bottom: 14px;
+}
+
+.assembly-code-box .comment {
+  color: #64748b;
+}
+
+.interactive-pipeline-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #0e1e33;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pipe-interactive-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  font-size: 13px;
+}
+
+.pipe-interactive-table th, .pipe-interactive-table td {
+  border: 1px solid #1e3352;
+  padding: 10px 8px;
+}
+
+.stage-if { background: #1e3a8a !important; color: #ffffff; }
+.stage-id { background: #0284c7 !important; color: #ffffff; }
+.stage-ex { background: #0d9488 !important; color: #ffffff; font-weight: bold; }
+.stage-mem { background: #b45309 !important; color: #ffffff; }
+.stage-wb { background: #15803d !important; color: #ffffff; font-weight: bold; }
+.stage-stall { background: #991b1b !important; color: #ffffff; font-weight: bold; }
+.fwd-source { box-shadow: inset 0 0 10px #34d399; }
+.fwd-target { box-shadow: inset 0 0 10px #fbbf24; }
+
+/* NUMA styles */
+.numa-interactive-workbench {
+  display: grid;
+  grid-template-columns: 1fr 180px 1fr;
+  gap: 16px;
+  align-items: center;
+  background: #050b14;
+  padding: 18px;
+  border-radius: var(--radius-md);
+}
+
+.socket-box {
+  background: #0c1829;
+  border: 1px solid #1e3a8a;
+  border-radius: var(--radius-sm);
+  padding: 14px;
+}
+
+.core-grid-visual {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 10px 0;
+  font-size: 12px;
+}
+
+.core-grid-visual span {
+  background: #132238;
+  padding: 6px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.core-active {
+  background: #1e3a8a !important;
+  color: #38bdf8 !important;
+  border: 1px solid #38bdf8;
+  font-weight: bold;
+}
+
+.ram-bank {
+  background: #091322;
+  border: 1px solid var(--border-color);
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.ram-bank.local {
+  border-color: #10b981;
+}
+
+.interconnect-bridge {
+  text-align: center;
+}
+
+.traffic-light {
+  font-size: 11px;
+  font-weight: 700;
+  background: #1e293b;
+  padding: 4px 8px;
+  border-radius: 12px;
+  margin: 6px 0;
+}
+
+/* Datapath live */
+.datapath-live-circuit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #050b14;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.dp-block-box {
+  background: #0f1c30;
+  border: 2px solid #1e3352;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  min-width: 90px;
+  transition: all 0.2s ease;
+}
+
+.dp-block-box.dp-active {
+  border-color: #38bdf8;
+  background: rgba(14, 165, 233, 0.2);
+  box-shadow: 0 0 15px rgba(14, 165, 233, 0.4);
+}
+
+.dp-bus-segment {
+  font-size: 20px;
+  color: #334155;
+  font-weight: bold;
+}
+
+.dp-bus-segment.wire-active {
+  color: #38bdf8;
+  text-shadow: 0 0 8px #38bdf8;
+}
+
+.alu-interactive-unit {
+  display: grid;
+  grid-template-columns: 180px 1fr 180px;
+  gap: 16px;
+  align-items: center;
+  background: #050b14;
+  padding: 16px;
+  border-radius: var(--radius-md);
+}
+
+.alu-shape-visual {
+  background: #172a45;
+  border: 2px solid #2563eb;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.alu-computing {
+  border-color: #10b981 !important;
+  background: rgba(16, 185, 129, 0.2) !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3) !important;
+}
+
+/* LED Flags */
+.led-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.led-item {
+  background: #0a1424;
+  border: 1px solid var(--border-color);
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.led-bulb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #334155;
+}
+
+.led-item.led-on {
+  border-color: #ef4444;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.led-item.led-on .led-bulb {
+  background: #ef4444;
+  box-shadow: 0 0 10px #ef4444;
+}
+
+/* RAM Cells Grid */
+.ram-cells-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.ram-interactive-cell {
+  background: #0f1c30;
+  border: 1px solid var(--border-color);
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.ram-interactive-cell:hover {
+  border-color: var(--accent-cyan);
+  background: #172a45;
+  transform: translateY(-2px);
+}
+
+.cell-selected-ok {
+  background: rgba(16, 185, 129, 0.25) !important;
+  border-color: #10b981 !important;
+}
+
+/* Daisy Chain diagram */
+.daisy-chain-diagram {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #050b14;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.daisy-device {
+  background: #0f1c30;
+  border: 1px solid var(--border-color);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  min-width: 140px;
+  text-align: center;
+}
+
+.dev-has-bus {
+  border-color: #10b981 !important;
+  background: rgba(16, 185, 129, 0.2) !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4) !important;
+}
+
+/* Stack slots */
+.stack-interactive-slot {
+  background: #0a1424;
+  border: 1px dashed var(--border-color);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.slot-filled {
+  background: rgba(30, 58, 138, 0.35);
+  border-color: #2563eb;
+  border-style: solid;
+  color: #93c5fd;
+}
+
+/* MESI state badges */
+.mesi-live-board {
+  display: grid;
+  grid-template-columns: 1fr 180px 1fr;
+  gap: 16px;
+  align-items: center;
+  background: #050b14;
+  padding: 18px;
+  border-radius: var(--radius-md);
+}
+
+.mesi-state-badge {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 13px;
+  margin: 8px 0;
+  display: inline-block;
+}
+
+.badge-m { background: #991b1b; color: #ffffff; }
+.badge-e { background: #1e3a8a; color: #ffffff; }
+.badge-s { background: #065f46; color: #ffffff; }
+.badge-i { background: #334155; color: #94a3b8; }
