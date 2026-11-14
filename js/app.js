@@ -111,7 +111,7 @@ const App = {
             <div class="login-logo-box">UA</div>
             <h2>UNIVERSIDAD AZTLÁN</h2>
             <p class="login-sub">Portal de Arquitectura de Computadoras &bull; Clave 636</p>
-            <span class="login-badge-sem">Sexto Cuatrimestre &bull; Modalidad Sabatina</span>
+            <span class="login-badge-sem">Acceso Restringido a Usuarios Autorizados</span>
           </div>
 
           <form id="form_login_portal" class="login-form-box">
@@ -121,7 +121,7 @@ const App = {
               <label for="login_email">Correo Institucional (@aztlan.edu.mx):</label>
               <div class="input-with-icon">
                 <span class="input-icon">📧</span>
-                <input type="email" id="login_email" class="form-control" placeholder="ejemplo@aztlan.edu.mx" required autofocus>
+                <input type="email" id="login_email" class="form-control" placeholder="ejemplo@aztlan.edu.mx" autocomplete="username" required autofocus>
               </div>
             </div>
 
@@ -129,7 +129,7 @@ const App = {
               <label for="login_password">Contraseña Institucional:</label>
               <div class="input-with-icon">
                 <span class="input-icon">🔑</span>
-                <input type="password" id="login_password" class="form-control" placeholder="••••••••••••" required>
+                <input type="password" id="login_password" class="form-control" placeholder="••••••••••••" autocomplete="current-password" required>
               </div>
             </div>
 
@@ -138,43 +138,8 @@ const App = {
             </button>
           </form>
 
-          <!-- Tarjetas de Acceso Rápido Institucional para Evaluación y Pruebas -->
-          <div class="login-quick-access-box">
-            <h4>Acceso Rápido con Credenciales Institucionales:</h4>
-            <div class="quick-credentials-list">
-              <!-- Botón Super Administrador -->
-              <div class="quick-cred-item admin-card" data-email="luis.garibaldi@aztlan.edu.mx" data-pass="ProfGaribaldi#2026">
-                <div class="qc-avatar">👨‍🏫</div>
-                <div class="qc-info">
-                  <strong>Ing. Luis Garibaldi</strong>
-                  <span>luis.garibaldi@aztlan.edu.mx</span>
-                  <span class="qc-role badge badge-warning">Super Administrador & Profesor (100% Permisos)</span>
-                </div>
-                <button type="button" class="btn btn-sm btn-warning qc-fill-btn">Usar Cuenta</button>
-              </div>
-
-              <!-- Botón Alumno 1 -->
-              <div class="quick-cred-item student-card" data-email="mario.leyva@aztlan.edu.mx" data-pass="MarioLeyva#2026">
-                <div class="qc-avatar">👨‍🎓</div>
-                <div class="qc-info">
-                  <strong>Mario Leyva</strong>
-                  <span>mario.leyva@aztlan.edu.mx</span>
-                  <span class="qc-role badge badge-info">Alumno de Ingeniería</span>
-                </div>
-                <button type="button" class="btn btn-sm btn-secondary qc-fill-btn">Usar Cuenta</button>
-              </div>
-
-              <!-- Botón Alumno 2 -->
-              <div class="quick-cred-item student-card" data-email="isaias.lopez@aztlan.edu.mx" data-pass="IsaiasLopez#2026">
-                <div class="qc-avatar">👨‍💻</div>
-                <div class="qc-info">
-                  <strong>Isaías López</strong>
-                  <span>isaias.lopez@aztlan.edu.mx</span>
-                  <span class="qc-role badge badge-info">Alumno de Ingeniería</span>
-                </div>
-                <button type="button" class="btn btn-sm btn-secondary qc-fill-btn">Usar Cuenta</button>
-              </div>
-            </div>
+          <div class="login-security-notice">
+            <p><i class="icon">🛡️</i> Acceso protegido. Sistema de autenticación con control de acceso basado en roles (RBAC) para el cuerpo docente y alumnado de la Universidad Aztlán.</p>
           </div>
         </div>
       </div>
@@ -197,19 +162,6 @@ const App = {
         errBox.style.display = "block";
       }
     };
-
-    container.querySelectorAll(".quick-cred-item").forEach(item => {
-      item.onclick = () => {
-        emailInp.value = item.dataset.email;
-        passInp.value = item.dataset.pass;
-        errBox.style.display = "none";
-        // Auto-enviar para acceso con 1 clic
-        const res = AuthService.login(emailInp.value, passInp.value);
-        if (res.success) {
-          App.showToast(`Autenticado exitosamente como ${res.user.name}`);
-        }
-      };
-    });
   },
 
   // RENDERIZADO DE LA BARRA DE NAVEGACIÓN SEGÚN PERMISOS (RBAC)
