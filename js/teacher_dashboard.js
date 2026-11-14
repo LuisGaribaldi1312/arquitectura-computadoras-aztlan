@@ -118,6 +118,9 @@ const TeacherDashboard = {
             <button class="btn ${isAllUnlocked ? 'btn-outline-secondary' : 'btn-outline-warning'} btn-sm btn-toggle-unlock-all" data-id="${student.id}">
               <i class="icon">${isAllUnlocked ? '🔒' : '🔓'}</i> ${isAllUnlocked ? 'Restablecer Bloqueo' : 'Desbloquear Todo'}
             </button>
+            <button class="btn btn-outline-danger btn-sm btn-reset-student" data-id="${student.id}" title="Reiniciar a 0% el avance de este alumno">
+              <i class="icon">🔄</i> Reiniciar a 0%
+            </button>
           </div>
         </div>
       `;
@@ -139,6 +142,9 @@ const TeacherDashboard = {
             </button>
             <button class="btn btn-outline-light" id="btn_p2p_room_modal">
               <i class="icon">🌐</i> Gestionar Sala P2P en Vivo
+            </button>
+            <button class="btn btn-outline-danger" id="btn_reset_all_students" title="Reiniciar el avance de todos los alumnos a 0%">
+              <i class="icon">🔄</i> Reiniciar Avances a 0%
             </button>
           </div>
         </div>
@@ -256,6 +262,31 @@ const TeacherDashboard = {
     if (btnActa) {
       btnActa.addEventListener("click", () => {
         TeacherDashboard.openOfficialGradeSheet();
+      });
+    }
+
+    // Botón para reiniciar avance individual a 0%
+    container.querySelectorAll(".btn-reset-student").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const studentId = btn.dataset.id;
+        const student = Database.getData().users.find(u => u.id === studentId);
+        if (confirm(`¿Estás seguro de reiniciar todo el avance y calificaciones de ${student.name} a CERO (0%)? Esta acción dejará su cuenta limpia para iniciar el curso.`)) {
+          Database.resetStudentProgress(studentId);
+          App.showToast(`Avance de ${student.name} reiniciado a 0% exitosamente.`);
+          TeacherDashboard.render("main_content_view");
+        }
+      });
+    });
+
+    // Botón para reiniciar avance de todos los alumnos a 0%
+    const btnResetAll = document.getElementById("btn_reset_all_students");
+    if (btnResetAll) {
+      btnResetAll.addEventListener("click", () => {
+        if (confirm("¿Estás seguro de reiniciar a CERO (0%) el avance de TODOS los alumnos de la plataforma? Todos los temas volverán a bloquearse secuencialmente desde el tema 1.")) {
+          Database.resetAllStudentsProgress();
+          App.showToast("Todos los avances de los alumnos se han reiniciado al 0%.");
+          TeacherDashboard.render("main_content_view");
+        }
       });
     }
 

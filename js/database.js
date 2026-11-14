@@ -5,11 +5,15 @@
  */
 
 const Database = {
-  DB_KEY: "AZTLAN_ARQ_COMP_DB_v2",
+  DB_KEY: "AZTLAN_ARQ_COMP_DB_v3",
   listeners: [],
 
-  // Inicialización de la base de datos con usuarios y datos predeterminados
+  // Inicialización de la base de datos con usuarios y datos predeterminados en 0%
   init() {
+    // Limpieza de versiones previas de pruebas
+    localStorage.removeItem("AZTLAN_ARQ_COMP_DB_v1");
+    localStorage.removeItem("AZTLAN_ARQ_COMP_DB_v2");
+
     let raw = localStorage.getItem(this.DB_KEY);
     if (!raw) {
       const defaultState = this.getDefaultState();
@@ -28,7 +32,7 @@ const Database = {
       this.save(parsed);
       return parsed;
     } catch (e) {
-      console.error("Error al parsear base de datos, restaurando predeterminada", e);
+      console.error("Error al parsear base de datos, restaurando predeterminada en 0%", e);
       const defaultState = this.getDefaultState();
       this.save(defaultState);
       return defaultState;
@@ -89,33 +93,22 @@ const Database = {
 
   getDefaultState() {
     const users = this.getDefaultUsers();
+    // Todos los estudiantes inician estrictamente con 0% de avance
     const studentsProgress = {
       "usr_mario": this.getDefaultStudentProgress("usr_mario"),
       "usr_isaias": this.getDefaultStudentProgress("usr_isaias")
     };
 
-    // Pre-cargar algo de progreso realista en Mario Leyva para que el profesor vea datos al entrar
-    studentsProgress["usr_mario"].readTopics = ["u1_1_1", "u1_1_2", "u1_2_1"];
-    studentsProgress["usr_mario"].completedExercises = ["sim_von_neumann_harvard", "sim_pipeline_hazards"];
-    studentsProgress["usr_mario"].scores = {
-      "sim_von_neumann_harvard": 100,
-      "sim_pipeline_hazards": 100
-    };
-    studentsProgress["usr_mario"].exerciseAttempts = {
-      "sim_von_neumann_harvard": 1,
-      "sim_pipeline_hazards": 2
-    };
-
     return {
-      version: 2,
+      version: 3,
       lastUpdated: new Date().toISOString(),
       users: users,
       progress: studentsProgress,
       auditLog: [
         {
           timestamp: new Date().toISOString(),
-          action: "INITIALIZE_PLATFORM",
-          description: "Plataforma de Arquitectura de Computadoras desplegada para Universidad Aztlán."
+          action: "RESET_ALL_STUDENTS_TO_ZERO",
+          description: "Plataforma de Arquitectura de Computadoras iniciada con avances de alumnos en 0% para Universidad Aztlán."
         }
       ]
     };
@@ -219,6 +212,44 @@ const Database = {
       description: "El Super Administrador Ing. Luis Garibaldi actualizó desbloqueo del tema " + topicId + " para el alumno."
     });
     this.save(data);
+  },
+
+  // Reiniciar avance a cero de un estudiante específico (Mario Leyva o Isaías López)
+  resetStudentProgress(userId) {
+    const data = this.getData();
+    data.progress[userId] = this.getDefaultStudentProgress(userId);
+    const user = data.users.find(u => u.id === userId);
+    const studentName = user ? user.name : userId;
+    
+    data.auditLog.unshift({
+      timestamp: new Date().toISOString(),
+      userId: "usr_garibaldi",
+      action: "RESET_STUDENT_PROGRESS",
+      description: "El Super Administrador Ing. Luis Garibaldi reinició al 0% todo el progreso del alumno " + studentName + "."
+    });
+    this.save(data);
+    if (typeof P2PSyncEngine !== 'undefined') {
+      P2PSyncEngine.broadcastLocalState(data);
+    }
+  },
+
+  // Reiniciar avance a cero de todos los alumnos de la plataforma
+  resetAllStudentsProgress() {
+    const data = this.getData();
+    data.users.filter(u => u.role === "student").forEach(st => {
+      data.progress[st.id] = this.getDefaultStudentProgress(st.id);
+    });
+    
+    data.auditLog.unshift({
+      timestamp: new Date().toISOString(),
+      userId: "usr_garibaldi",
+      action: "RESET_ALL_STUDENTS",
+      description: "El Super Administrador Ing. Luis Garibaldi reinició al 0% el avance de todos los estudiantes para inicio de ciclo."
+    });
+    this.save(data);
+    if (typeof P2PSyncEngine !== 'undefined') {
+      P2PSyncEngine.broadcastLocalState(data);
+    }
   },
 
   // Obtener progreso individual del estudiante
