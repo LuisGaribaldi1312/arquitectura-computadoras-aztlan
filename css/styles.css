@@ -1976,3 +1976,408 @@ body {
 .badge-e { background: #1e3a8a; color: #ffffff; }
 .badge-s { background: #065f46; color: #ffffff; }
 .badge-i { background: #334155; color: #94a3b8; }
+
+/* ==========================================================================
+   SISTEMA DE DESBLOQUEO SECUENCIAL PEDAGÓGICO Y MAESTRÍA POR TEMA
+   ========================================================================== */
+
+/* Leyenda del Sidebar */
+.sidebar-lock-legend {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border-bottom: 1px solid var(--border-color);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+/* Enlaces del temario según estado de bloqueo */
+.topic-nav-link.topic-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-left: 3px solid #475569 !important;
+}
+
+.topic-nav-link.topic-locked:hover {
+  background: rgba(30, 41, 59, 0.3) !important;
+  color: #94a3b8 !important;
+  transform: none !important;
+}
+
+.topic-nav-link.topic-completed {
+  border-left: 3px solid #10b981 !important;
+}
+
+.topic-nav-link.topic-unlocked {
+  border-left: 3px solid #3b82f6 !important;
+}
+
+.topic-lock-pill {
+  margin-left: auto;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.topic-completed .topic-lock-pill {
+  color: #10b981;
+}
+
+.topic-unlocked .topic-lock-pill {
+  color: #60a5fa;
+}
+
+.topic-locked .topic-lock-pill {
+  color: #94a3b8;
+}
+
+/* Banner de Maestría y Requisitos por Tema */
+.topic-mastery-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+  border: 1px solid var(--border-color);
+  background: #0d1b2a;
+}
+
+.topic-mastery-banner.mastery-complete {
+  background: linear-gradient(135deg, rgba(6, 95, 70, 0.25) 0%, rgba(16, 185, 129, 0.1) 100%);
+  border-color: #10b981;
+}
+
+.topic-mastery-banner.mastery-in-progress {
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.25) 0%, rgba(217, 119, 6, 0.1) 100%);
+  border-color: #3b82f6;
+}
+
+.mastery-info h4 {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.mastery-steps-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.m-step {
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.m-step.step-done {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.m-step.step-pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px dashed rgba(245, 158, 11, 0.4);
+}
+
+.mastery-badge-box {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+/* Modal de Desbloqueo Automático */
+.unlock-success-box {
+  padding: 24px 16px;
+  text-align: center;
+}
+
+.unlock-icon {
+  font-size: 56px;
+  animation: pulseUnlock 1.4s infinite alternate ease-in-out;
+  margin-bottom: 12px;
+}
+
+@keyframes pulseUnlock {
+  from { transform: scale(1); filter: drop-shadow(0 0 4px #3b82f6); }
+  to { transform: scale(1.15); filter: drop-shadow(0 0 16px #10b981); }
+}
+
+.unlock-success-box h3 {
+  color: #10b981;
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+
+.unlock-success-box p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.unlocked-next-card {
+  background: #0b1526;
+  border: 2px solid #2563eb;
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  margin: 20px 0;
+  text-align: left;
+}
+
+.unlocked-next-card h4 {
+  margin: 10px 0 6px 0;
+  color: #93c5fd;
+  font-size: 16px;
+}
+
+.unlocked-next-card p {
+  margin: 0;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+/* Simuladores Bloqueados en el Hub */
+.sim-hub-card.sim-locked {
+  opacity: 0.6;
+  filter: grayscale(0.5);
+  border: 1px dashed #475569;
+  background: #080f1a;
+}
+
+.sim-hub-card.sim-locked:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-locked-sim {
+  cursor: not-allowed;
+  background: #334155;
+  color: #94a3b8;
+  border: 1px solid #475569;
+}
+
+/* Roadmap Secuencial de 20 Temas (Vista de Alumno) */
+.unlock-status-overview-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 30px;
+}
+
+.uso-header h3 {
+  margin: 0 0 6px 0;
+  font-size: 20px;
+  color: #f1f5f9;
+}
+
+.uso-header p {
+  margin: 0 0 20px 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.uso-stats-pills {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.uso-pill {
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid transparent;
+}
+
+.uso-pill .u-num {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.uso-pill .u-lbl {
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.pill-completed {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.pill-unlocked {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+
+.pill-locked {
+  background: rgba(100, 116, 139, 0.12);
+  border-color: #475569;
+  color: #94a3b8;
+}
+
+.roadmap-grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.roadmap-card {
+  background: #091220;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  transition: all var(--transition-fast);
+}
+
+.roadmap-card.node-completed {
+  border-color: rgba(16, 185, 129, 0.6);
+  background: linear-gradient(180deg, #091220 0%, rgba(6, 78, 59, 0.15) 100%);
+}
+
+.roadmap-card.node-unlocked {
+  border-color: #3b82f6;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+}
+
+.roadmap-card.node-locked {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.rm-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.rm-step-index {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.rm-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: #93c5fd;
+}
+
+.roadmap-card h5 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin: 0 0 12px 0;
+  line-height: 1.35;
+  flex-grow: 1;
+}
+
+.rm-checks {
+  background: rgba(15, 23, 42, 0.7);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.rm-check-item {
+  color: #94a3b8;
+  margin: 3px 0;
+}
+
+.rm-check-item.checked {
+  color: #34d399;
+  font-weight: 600;
+}
+
+.rm-action {
+  margin-top: auto;
+}
+
+.rm-locked-msg {
+  font-size: 12px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-xs {
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 4px;
+}
+
+.btn-outline-success {
+  background: transparent;
+  color: #10b981;
+  border: 1px solid #10b981;
+}
+
+.btn-outline-success:hover {
+  background: #10b981;
+  color: #fff;
+}
+
+.btn-outline-danger {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
+.btn-outline-danger:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
+.btn-outline-warning {
+  background: transparent;
+  color: #f59e0b;
+  border: 1px solid #f59e0b;
+}
+
+.btn-outline-warning:hover {
+  background: #f59e0b;
+  color: #000;
+}
+
+.table-dark {
+  width: 100%;
+  border-collapse: collapse;
+  color: #e2e8f0;
+  font-size: 13px;
+}
+
+.table-dark th {
+  background: #0f172a;
+  border: 1px solid #334155;
+  padding: 10px;
+  text-align: left;
+}
+
+.table-dark td {
+  border: 1px solid #334155;
+  padding: 8px 10px;
+  background: #091220;
+}
+
+.table-dark tr:hover td {
+  background: #0f233f;
+}

@@ -21,6 +21,25 @@ const TeacherDashboard = {
       sumProgress += metrics.totalPercent;
       sumExercises += metrics.completedExCount;
 
+      // Calcular estado de temas secuenciales
+      let completedTopicsCount = 0;
+      let activeCurrentTopic = null;
+      CURRICULUM_DATA.forEach(t => {
+        const isComp = Database.isTopicCompleted(student.id, t.id);
+        if (isComp) {
+          completedTopicsCount++;
+        } else if (!activeCurrentTopic && Database.isTopicUnlocked(student.id, t.id)) {
+          activeCurrentTopic = t;
+        }
+      });
+      if (!activeCurrentTopic && completedTopicsCount === CURRICULUM_DATA.length) {
+        activeCurrentTopic = { code: "FINAL", title: "Todos los temas completados" };
+      } else if (!activeCurrentTopic) {
+        activeCurrentTopic = CURRICULUM_DATA[0];
+      }
+
+      const isAllUnlocked = prog.manuallyUnlockedTopics?.includes("all");
+
       return `
         <div class="student-card" id="card_${student.id}">
           <div class="student-card-header">
@@ -50,12 +69,16 @@ const TeacherDashboard = {
           <!-- Métricas Detalladas -->
           <div class="student-kpis-grid">
             <div class="kpi-mini">
-              <span class="kpi-label">Lectura de Temas:</span>
-              <strong>${metrics.readCount} de ${metrics.totalTopics} (${metrics.readPercent}%)</strong>
+              <span class="kpi-label">Temas 100% Completados:</span>
+              <strong class="text-success">${completedTopicsCount} de 20 temas</strong>
             </div>
             <div class="kpi-mini">
-              <span class="kpi-label">Ejercicios Prácticos:</span>
-              <strong>${metrics.completedExCount} de ${metrics.totalTopics} (${metrics.exPercent}%)</strong>
+              <span class="kpi-label">Tema en Curso Actual:</span>
+              <strong class="text-primary">${activeCurrentTopic ? activeCurrentTopic.code : 'U1.1.1'}</strong>
+            </div>
+            <div class="kpi-mini">
+              <span class="kpi-label">Estado de Bloqueo:</span>
+              <span>${isAllUnlocked ? '<span class="badge badge-warning">🔓 Desbloqueo Total Manual</span>' : '<span class="badge badge-info">🔒 Secuencial Estricto</span>'}</span>
             </div>
             <div class="kpi-mini">
               <span class="kpi-label">Promedio Ejercicios:</span>
@@ -90,7 +113,10 @@ const TeacherDashboard = {
               <i class="icon">✏️</i> Evaluar y Calificar Alumno
             </button>
             <button class="btn btn-secondary btn-sm btn-view-details" data-id="${student.id}">
-              <i class="icon">🔍</i> Ver Bitácora de Ejercicios
+              <i class="icon">🔍</i> Bitácora de 20 Temas y Bloqueos
+            </button>
+            <button class="btn ${isAllUnlocked ? 'btn-outline-secondary' : 'btn-outline-warning'} btn-sm btn-toggle-unlock-all" data-id="${student.id}">
+              <i class="icon">${isAllUnlocked ? '🔒' : '🔓'}</i> ${isAllUnlocked ? 'Restablecer Bloqueo' : 'Desbloquear Todo'}
             </button>
           </div>
         </div>
@@ -194,6 +220,37 @@ const TeacherDashboard = {
       });
     });
 
+    // Vincular bitácora detallada de desbloqueo de 20 temas
+    container.querySelectorAll(".btn-view-details").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const studentId = btn.dataset.id;
+        TeacherDashboard.openStudentDetailsModal(studentId);
+      });
+    });
+
+    // Botón de desbloqueo rápido para el profesor (Super Admin)
+    container.querySelectorAll(".btn-toggle-unlock-all").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const studentId = btn.dataset.id;
+        const student = Database.getData().users.find(u => u.id === studentId);
+        const prog = Database.getStudentProgress(studentId);
+        const isAll = prog.manuallyUnlockedTopics?.includes("all");
+        if (!isAll) {
+          if (confirm(`¿Deseas desbloquear manualmente todos los 20 temas para ${student.name}? El alumno podrá ver y practicar cualquier tema sin esperar la secuencia.`)) {
+            Database.setTopicManualUnlock(studentId, "all", true);
+            App.showToast(`Todos los temas han sido desbloqueados para ${student.name}.`);
+            TeacherDashboard.render("main_content_view");
+          }
+        } else {
+          if (confirm(`¿Restablecer el bloqueo secuencial estricto para ${student.name}? Los temas volverán a requerir el 100% del tema anterior.`)) {
+            Database.setTopicManualUnlock(studentId, "all", false);
+            App.showToast(`Bloqueo secuencial restablecido para ${student.name}.`);
+            TeacherDashboard.render("main_content_view");
+          }
+        }
+      });
+    });
+
     // Vincular botón de acta oficial imprimible
     const btnActa = document.getElementById("btn_export_grades_pdf");
     if (btnActa) {
@@ -209,6 +266,93 @@ const TeacherDashboard = {
         TeacherDashboard.openP2PModal();
       });
     }
+  },
+
+  // Modal detallado con bitácora de los 20 temas y su estado de desbloqueo
+  openStudentDetailsModal(studentId) {
+    const modal = document.getElementById("eval_modal");
+    const title = document.getElementById("eval_modal_title");
+    const body = document.getElementById("eval_modal_body");
+    const data = Database.getData();
+    const student = data.users.find(u => u.id === studentId);
+    const prog = Database.getStudentProgress(studentId);
+
+    title.textContent = `Bitácora de Progreso y Desbloqueo: ${student.name}`;
+
+    const topicsRowsHtml = CURRICULUM_DATA.map((t, idx) => {
+      const status = Database.getTopicStatus(studentId, t.id);
+      const isRead = prog.readTopics?.includes(t.id) || false;
+      const isExDone = (prog.completedExercises?.includes(t.exerciseId) || false) && ((prog.scores?.[t.exerciseId] || 0) >= 100);
+      const score = prog.scores?.[t.exerciseId] || 0;
+
+      let statusBadge = "";
+      if (status === "completed") {
+        statusBadge = '<span class="badge badge-success">✓ 100% Completado</span>';
+      } else if (status === "unlocked") {
+        statusBadge = '<span class="badge badge-primary">🔓 En Curso</span>';
+      } else {
+        statusBadge = '<span class="badge badge-secondary">🔒 Bloqueado</span>';
+      }
+
+      return `
+        <tr>
+          <td><strong>#${idx + 1}</strong></td>
+          <td><span class="unit-pill">U${t.unit} &bull; ${t.code}</span></td>
+          <td><strong>${t.title}</strong></td>
+          <td>${isRead ? '<span class="text-success">✓ Acreditada</span>' : '<span class="text-muted">○ Pendiente</span>'}</td>
+          <td>${isExDone ? `<strong class="text-success">✓ ${score}/100 pts</strong>` : (score > 0 ? `<span class="text-warning">${score}/100 pts</span>` : '<span class="text-muted">0 pts</span>')}</td>
+          <td>${statusBadge}</td>
+          <td>
+            <button class="btn btn-xs ${status === 'locked' ? 'btn-outline-success' : 'btn-outline-danger'} btn-toggle-single-unlock" data-topic="${t.id}" data-current="${status}">
+              ${status === 'locked' ? 'Desbloquear' : 'Bloquear'}
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    body.innerHTML = `
+      <div class="student-details-modal-box">
+        <div class="sd-header-summary">
+          <p>Supervisión detallada de cada uno de los 20 temas de <strong>${student.name}</strong> (${student.email}):</p>
+        </div>
+        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+          <table class="table table-dark table-striped">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Código</th>
+                <th>Tema Curricular</th>
+                <th>Lectura</th>
+                <th>Laboratorio</th>
+                <th>Estado</th>
+                <th>Control Super Admin</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${topicsRowsHtml}
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer-actions" style="margin-top: 15px;">
+          <button type="button" class="btn btn-secondary" id="btn_close_details_modal">Cerrar</button>
+        </div>
+      </div>
+    `;
+
+    modal.style.display = "flex";
+    document.getElementById("btn_close_eval_modal").onclick = () => { modal.style.display = "none"; };
+    document.getElementById("btn_close_details_modal").onclick = () => { modal.style.display = "none"; };
+
+    body.querySelectorAll(".btn-toggle-single-unlock").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const topicId = btn.dataset.topic;
+        const current = btn.dataset.current;
+        const shouldUnlock = current === "locked";
+        Database.setTopicManualUnlock(studentId, topicId, shouldUnlock);
+        TeacherDashboard.openStudentDetailsModal(studentId);
+      });
+    });
   },
 
   // Modal para calificar y retroalimentar al alumno

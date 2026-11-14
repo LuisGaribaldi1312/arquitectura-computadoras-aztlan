@@ -146,7 +146,82 @@ const Database = {
     this.listeners.forEach(fn => fn(data));
   },
 
-  // Obtener progreso de un estudiante
+  // Verificación de acreditación del 100% de un tema (Lectura + Laboratorio Práctico)
+  isTopicCompleted(userId, topicId) {
+    const prog = this.getStudentProgress(userId);
+    const topic = CURRICULUM_DATA.find(t => t.id === topicId);
+    if (!topic) return false;
+
+    const isRead = prog.readTopics?.includes(topicId) || false;
+    const isExDone = (prog.completedExercises?.includes(topic.exerciseId) || false) && ((prog.scores?.[topic.exerciseId] || 0) >= 100);
+
+    return isRead && isExDone;
+  },
+
+  // Verificación de desbloqueo secuencial (Solo desbloquea si el tema anterior está al 100%)
+  isTopicUnlocked(userId, topicId) {
+    const user = AuthService.getCurrentUser();
+    // El Super Administrador (Profesor) puede acceder e inspeccionar cualquier tema
+    if (user && user.role === "admin") return true;
+
+    const topicIndex = CURRICULUM_DATA.findIndex(t => t.id === topicId);
+    if (topicIndex === -1) return false;
+
+    // El primer tema (1.1.1) siempre está desbloqueado para iniciar
+    if (topicIndex === 0) return true;
+
+    const prog = this.getStudentProgress(userId);
+    if (prog.manuallyUnlockedTopics?.includes('all') || prog.manuallyUnlockedTopics?.includes(topicId)) return true;
+
+    // Un tema se desbloquea únicamente si el tema inmediatamente anterior está 100% completado
+    const prevTopic = CURRICULUM_DATA[topicIndex - 1];
+    return this.isTopicCompleted(userId, prevTopic.id);
+  },
+
+  // Obtener estado detallado del tema: 'completed', 'unlocked', 'locked'
+  getTopicStatus(userId, topicId) {
+    if (this.isTopicCompleted(userId, topicId)) return "completed";
+    if (this.isTopicUnlocked(userId, topicId)) return "unlocked";
+    return "locked";
+  },
+
+  // Obtener el siguiente tema en la secuencia curricular
+  getNextTopic(topicId) {
+    const idx = CURRICULUM_DATA.findIndex(t => t.id === topicId);
+    if (idx >= 0 && idx < CURRICULUM_DATA.length - 1) {
+      return CURRICULUM_DATA[idx + 1];
+    }
+    return null;
+  },
+
+  // Desbloqueo docente manual
+  setTopicManualUnlock(studentId, topicId, status = true) {
+    const data = this.getData();
+    if (!data.progress[studentId]) {
+      data.progress[studentId] = this.getDefaultStudentProgress(studentId);
+    }
+    const st = data.progress[studentId];
+    if (!st.manuallyUnlockedTopics) st.manuallyUnlockedTopics = [];
+    if (topicId === 'all') {
+      st.manuallyUnlockedTopics = status ? ['all'] : [];
+    } else {
+      if (status && !st.manuallyUnlockedTopics.includes(topicId)) {
+        st.manuallyUnlockedTopics.push(topicId);
+      } else if (!status) {
+        st.manuallyUnlockedTopics = st.manuallyUnlockedTopics.filter(t => t !== topicId && t !== 'all');
+      }
+    }
+    data.auditLog.unshift({
+      timestamp: new Date().toISOString(),
+      userId: 'usr_garibaldi',
+      action: status ? 'MANUAL_UNLOCK' : 'MANUAL_LOCK',
+      topicId: topicId,
+      description: "El Super Administrador Ing. Luis Garibaldi actualizó desbloqueo del tema " + topicId + " para el alumno."
+    });
+    this.save(data);
+  },
+
+  // Obtener progreso individual del estudiante
   getStudentProgress(userId) {
     const data = this.getData();
     if (!data.progress[userId]) {

@@ -261,16 +261,27 @@ const App = {
           <div class="unit-group-title">${unitTitles[u]}</div>
           <div class="unit-topic-links">
             ${unitTopics.map(t => {
-              const isRead = studentProg.readTopics?.includes(t.id);
-              const isExDone = studentProg.completedExercises?.includes(t.exerciseId);
+              const status = Database.getTopicStatus(user.id, t.id);
               const isCurrent = t.id === activeTopic.id;
+              const isRead = studentProg.readTopics?.includes(t.id);
+              const isExDone = (studentProg.completedExercises?.includes(t.exerciseId) || false) && ((studentProg.scores?.[t.exerciseId] || 0) >= 100);
+
+              let statusIcon = "🔒";
+              let statusClass = "topic-locked";
+              if (status === "completed") {
+                statusIcon = "✓";
+                statusClass = "topic-completed";
+              } else if (status === "unlocked") {
+                statusIcon = "🔓";
+                statusClass = "topic-unlocked";
+              }
+
               return `
-                <a href="javascript:void(0)" class="topic-nav-link ${isCurrent ? 'active' : ''}" data-topic="${t.id}">
+                <a href="javascript:void(0)" class="topic-nav-link ${isCurrent ? 'active' : ''} ${statusClass}" data-topic="${t.id}" data-status="${status}">
                   <span class="topic-code">${t.code}</span>
                   <span class="topic-text">${t.title}</span>
-                  <span class="status-dots">
-                    <span class="dot ${isRead ? 'dot-read' : ''}" title="Lectura"></span>
-                    <span class="dot ${isExDone ? 'dot-done' : ''}" title="Práctica"></span>
+                  <span class="topic-lock-pill" title="${status === 'completed' ? '100% Completado' : (status === 'unlocked' ? 'En Curso' : 'Bloqueado')}">
+                    ${statusIcon}
                   </span>
                 </a>
               `;
@@ -280,11 +291,20 @@ const App = {
       `;
     }
 
+    const isCurrentCompleted = Database.isTopicCompleted(user.id, activeTopic.id);
+    const isExDone = (studentProg.completedExercises?.includes(activeTopic.exerciseId) || false) && ((studentProg.scores?.[activeTopic.exerciseId] || 0) >= 100);
+    const nextTopic = Database.getNextTopic(activeTopic.id);
+
     container.innerHTML = `
       <div class="units-layout-grid">
         <aside class="units-sidebar">
           <div class="sidebar-search-box">
             <input type="text" id="txt_search_topics" placeholder="Buscar tema o concepto real..." class="form-control">
+          </div>
+          <div class="sidebar-lock-legend">
+            <span><strong class="text-success">✓</strong> Completado 100%</span> |
+            <span><strong class="text-primary">🔓</strong> En Curso</span> |
+            <span><strong class="text-muted">🔒</strong> Bloqueado</span>
           </div>
           <div class="topics-accordion" id="accordion_topics">
             ${unitsListHtml}
@@ -292,6 +312,31 @@ const App = {
         </aside>
 
         <main class="topic-main-content">
+          <!-- Banner de Progreso y Desbloqueo del Tema Actual -->
+          <div class="topic-mastery-banner ${isCurrentCompleted ? 'mastery-complete' : 'mastery-in-progress'}">
+            <div class="mastery-info">
+              <h4>Requisitos de Acreditación del Tema ${activeTopic.code}:</h4>
+              <div class="mastery-steps-row">
+                <span class="m-step ${isTopicRead ? 'step-done' : 'step-pending'}">
+                  ${isTopicRead ? '✓ 1. Lectura y Teoría (Acreditado)' : '⏳ 1. Lectura y Teoría (Pendiente de confirmar)'}
+                </span>
+                <span class="m-step ${isExDone ? 'step-done' : 'step-pending'}">
+                  ${isExDone ? '✓ 2. Laboratorio Práctico (100 / 100 pts)' : '⏳ 2. Laboratorio Práctico (Pendiente de resolver)'}
+                </span>
+              </div>
+            </div>
+            <div class="mastery-badge-box">
+              <span class="badge ${isCurrentCompleted ? 'badge-success' : 'badge-warning'}">
+                ${isCurrentCompleted ? '✓ TEMA 100% COMPLETADO' : '⏳ TEMA EN CURSO'}
+              </span>
+              ${isCurrentCompleted && nextTopic ? `
+                <button class="btn btn-primary btn-sm" id="btn_quick_next_topic" style="margin-top: 6px;">
+                  Siguiente Tema (${nextTopic.code}) &rarr;
+                </button>
+              ` : ''}
+            </div>
+          </div>
+
           <div class="topic-article-header">
             <div class="topic-badges-row">
               <span class="badge badge-primary">${activeTopic.unitTitle}</span>
@@ -309,11 +354,11 @@ const App = {
 
           <div class="reading-confirmation-box ${isTopicRead ? 'confirmed' : ''}">
             <div class="reading-text">
-              <strong>${isTopicRead ? '✓ Contenido Teórico y Caso Real Estudiado' : 'Registro de Lectura y Comprensión'}</strong>
-              <p>${isTopicRead ? 'Has acreditado la revisión de este contenido. Tu avance se sincroniza con el Panel Docente.' : 'Al finalizar la lectura comprensiva de la teoría y ejemplos prácticos, pulsa para acreditar tu 10% de Reportes de Lectura.'}</p>
+              <strong>${isTopicRead ? '✓ Contenido Teórico y Caso Real Estudiado al 100%' : 'Registro de Lectura y Comprensión'}</strong>
+              <p>${isTopicRead ? 'Has acreditado la lectura. Ahora resuelve el laboratorio práctico para completar el 100% de este tema y desbloquear el siguiente.' : 'Al finalizar la lectura comprensiva de la teoría y ejemplos prácticos, pulsa para acreditar tu lectura.'}</p>
             </div>
             <button class="btn ${isTopicRead ? 'btn-secondary' : 'btn-success'}" id="btn_confirm_read" ${isTopicRead ? 'disabled' : ''}>
-              ${isTopicRead ? 'Lectura Acreditada ✓' : 'Marcar como Leído y Estudiado'}
+              ${isTopicRead ? 'Lectura Acreditada ✓' : 'Marcar como Leído y Estudiado (100%)'}
             </button>
           </div>
 
@@ -326,20 +371,53 @@ const App = {
           </section>
         </main>
       </div>
+
+      <!-- Modal de Desbloqueo Automático del Siguiente Tema -->
+      <div id="unlock_modal" class="modal-backdrop" style="display: none;">
+        <div class="modal-dialog">
+          <div class="modal-header">
+            <h4 class="text-success"><i class="icon">🎉</i> ¡Tema Completado al 100%!</h4>
+            <button class="modal-close-btn" id="btn_close_unlock_modal">&times;</button>
+          </div>
+          <div class="modal-body" id="unlock_modal_body">
+            <!-- Contenido dinámico del desbloqueo -->
+          </div>
+        </div>
+      </div>
     `;
 
+    // Vincular navegación de temas en el sidebar
     container.querySelectorAll(".topic-nav-link").forEach(link => {
       link.addEventListener("click", () => {
-        this.selectedTopicId = link.dataset.topic;
+        const topicId = link.dataset.topic;
+        const status = link.dataset.status;
+
+        if (status === "locked") {
+          const tIdx = CURRICULUM_DATA.findIndex(x => x.id === topicId);
+          const prev = tIdx > 0 ? CURRICULUM_DATA[tIdx - 1] : null;
+          alert(`🔒 CONTENIDO BLOQUEADO:\nPara acceder a ${link.querySelector(".topic-code").textContent} ${link.querySelector(".topic-text").textContent}, primero debes completar al 100% tanto la lectura como el laboratorio del tema previo (${prev ? prev.code + " " + prev.title : ""}).`);
+          return;
+        }
+
+        this.selectedTopicId = topicId;
         this.renderUnitsView(container);
       });
     });
+
+    const btnNextQuick = document.getElementById("btn_quick_next_topic");
+    if (btnNextQuick && nextTopic) {
+      btnNextQuick.onclick = () => {
+        this.selectedTopicId = nextTopic.id;
+        this.renderUnitsView(container);
+      };
+    }
 
     const btnRead = document.getElementById("btn_confirm_read");
     if (btnRead && !isTopicRead) {
       btnRead.addEventListener("click", () => {
         Database.markTopicAsRead(user.id, activeTopic.id);
-        this.showToast(`¡Lectura de ${activeTopic.code} registrada con éxito!`);
+        this.showToast(`¡Lectura de ${activeTopic.code} acreditada al 100%!`);
+        this.checkAutoUnlock(activeTopic.id);
         this.renderUnitsView(container);
       });
     }
@@ -350,7 +428,9 @@ const App = {
       studentProg,
       (exId, score) => {
         Database.recordExerciseScore(user.id, exId, score);
-        App.showToast(`¡Excelente! Ejercicio calificado con ${score}/100 pts. Progreso guardado.`);
+        App.showToast(`¡Excelente! Laboratorio acreditado con ${score}/100 pts.`);
+        this.checkAutoUnlock(activeTopic.id);
+        this.renderUnitsView(container);
       }
     );
 
@@ -366,28 +446,90 @@ const App = {
     }
   },
 
+  // VERIFICACIÓN Y APERTURA DE MODAL DE DESBLOQUEO AUTOMÁTICO
+  checkAutoUnlock(topicId) {
+    const user = AuthService.getCurrentUser();
+    const isCompleted = Database.isTopicCompleted(user.id, topicId);
+    if (!isCompleted) return;
+
+    const nextTopic = Database.getNextTopic(topicId);
+    if (!nextTopic) {
+      this.showToast("🏆 ¡Felicidades! Has completado el 100% de todo el temario de Arquitectura de Computadoras.");
+      return;
+    }
+
+    const modal = document.getElementById("unlock_modal");
+    const body = document.getElementById("unlock_modal_body");
+    if (!modal || !body) return;
+
+    const current = CURRICULUM_DATA.find(t => t.id === topicId);
+
+    body.innerHTML = `
+      <div class="unlock-success-box text-center">
+        <div class="unlock-icon">🔓</div>
+        <h3>¡Has completado el Tema ${current.code} al 100%!</h3>
+        <p>Has acreditado tanto la <strong>lectura teórica</strong> como el <strong>laboratorio práctico</strong> con calificación perfecta de 100 pts.</p>
+        
+        <div class="unlocked-next-card">
+          <span class="badge badge-success">✓ DESBLOQUEADO EN AUTOMÁTICO</span>
+          <h4>${nextTopic.code}: ${nextTopic.title}</h4>
+          <p>${nextTopic.summary}</p>
+        </div>
+
+        <button class="btn btn-primary btn-lg btn-block" id="btn_advance_next_modal" style="margin-top: 20px;">
+          Avanzar al Siguiente Tema (${nextTopic.code}) &rarr;
+        </button>
+      </div>
+    `;
+
+    modal.style.display = "flex";
+
+    document.getElementById("btn_close_unlock_modal").onclick = () => { modal.style.display = "none"; };
+    document.getElementById("btn_advance_next_modal").onclick = () => {
+      modal.style.display = "none";
+      this.selectedTopicId = nextTopic.id;
+      this.renderUnitsView(document.getElementById("main_content_view"));
+    };
+  },
+
   // VISTA 2: LABORATORIO DE SIMULADORES
   renderSimulatorsHubView(container) {
     const user = AuthService.getCurrentUser();
     const studentProg = Database.getStudentProgress(user.id);
 
     const cardsHtml = CURRICULUM_DATA.map(t => {
-      const isDone = studentProg.completedExercises?.includes(t.exerciseId);
+      const status = Database.getTopicStatus(user.id, t.id);
+      const isDone = (studentProg.completedExercises?.includes(t.exerciseId) || false) && ((studentProg.scores?.[t.exerciseId] || 0) >= 100);
       const score = studentProg.scores?.[t.exerciseId] || 0;
+      const isLocked = status === "locked";
+
+      let badgeHtml = "";
+      if (status === "completed") {
+        badgeHtml = `<span class="badge badge-success">✓ 100% Completado (${score} pts)</span>`;
+      } else if (status === "unlocked") {
+        badgeHtml = `<span class="badge badge-primary">🔓 En Curso (${score > 0 ? score + ' pts' : 'Pendiente'})</span>`;
+      } else {
+        badgeHtml = `<span class="badge badge-secondary">🔒 Bloqueado</span>`;
+      }
+
       return `
-        <div class="sim-hub-card ${isDone ? 'sim-done' : ''}">
+        <div class="sim-hub-card ${isDone ? 'sim-done' : ''} ${isLocked ? 'sim-locked' : ''}">
           <div class="sim-hub-header">
-            <span class="badge ${isDone ? 'badge-success' : 'badge-warning'}">
-              ${isDone ? `✓ Aprobado (${score} pts)` : 'Pendiente'}
-            </span>
+            ${badgeHtml}
             <span class="unit-pill">U${t.unit} &bull; ${t.code}</span>
           </div>
           <h4>${t.exerciseTitle}</h4>
           <p>${t.summary}</p>
           <div class="sim-hub-footer">
-            <button class="btn btn-primary btn-sm btn-launch-sim" data-topic="${t.id}">
-              <i class="icon">🚀</i> Abrir Simulador Interactivo
-            </button>
+            ${isLocked ? `
+              <button class="btn btn-secondary btn-sm btn-locked-sim" data-topic="${t.id}" title="Completa el tema anterior para desbloquear">
+                <i class="icon">🔒</i> Bloqueado
+              </button>
+            ` : `
+              <button class="btn btn-primary btn-sm btn-launch-sim" data-topic="${t.id}">
+                <i class="icon">🚀</i> ${isDone ? 'Repetir Práctica' : 'Abrir Simulador'}
+              </button>
+            `}
           </div>
         </div>
       `;
@@ -411,6 +553,16 @@ const App = {
         this.switchTab("tab_units");
       });
     });
+
+    container.querySelectorAll(".btn-locked-sim").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const topicId = btn.dataset.topic;
+        const tIdx = CURRICULUM_DATA.findIndex(x => x.id === topicId);
+        const prev = tIdx > 0 ? CURRICULUM_DATA[tIdx - 1] : null;
+        alert(`🔒 SIMULADOR BLOQUEADO:
+Para desbloquear este laboratorio interactivo, primero debes completar al 100% tanto la lectura como el simulador del tema previo (${prev ? prev.code + ' ' + prev.title : ''}).`);
+      });
+    });
   },
 
   // VISTA 3: MI AVANCE ACADÉMICO (VISTA ALUMNO)
@@ -418,6 +570,62 @@ const App = {
     const user = AuthService.getCurrentUser();
     const prog = Database.getStudentProgress(user.id);
     const metrics = Database.calculateGlobalProgress(prog);
+
+    // Contadores del Roadmap
+    let completedCount = 0;
+    let unlockedCount = 0;
+    let lockedCount = 0;
+
+    const roadmapCardsHtml = CURRICULUM_DATA.map((t, idx) => {
+      const status = Database.getTopicStatus(user.id, t.id);
+      const isRead = prog.readTopics?.includes(t.id) || false;
+      const isExDone = (prog.completedExercises?.includes(t.exerciseId) || false) && ((prog.scores?.[t.exerciseId] || 0) >= 100);
+      const score = prog.scores?.[t.exerciseId] || 0;
+
+      let statusBadge = "";
+      let nodeClass = "";
+      if (status === "completed") {
+        completedCount++;
+        nodeClass = "node-completed";
+        statusBadge = `<span class="badge badge-success">✓ 100% Completado</span>`;
+      } else if (status === "unlocked") {
+        unlockedCount++;
+        nodeClass = "node-unlocked";
+        statusBadge = `<span class="badge badge-primary">🔓 En Curso</span>`;
+      } else {
+        lockedCount++;
+        nodeClass = "node-locked";
+        statusBadge = `<span class="badge badge-secondary">🔒 Bloqueado</span>`;
+      }
+
+      return `
+        <div class="roadmap-card ${nodeClass}">
+          <div class="rm-header">
+            <span class="rm-step-index">#${idx + 1}</span>
+            <span class="rm-code">${t.code}</span>
+            ${statusBadge}
+          </div>
+          <h5>${t.title}</h5>
+          <div class="rm-checks">
+            <div class="rm-check-item ${isRead ? 'checked' : ''}">
+              <span>${isRead ? '✓' : '○'} 1. Lectura teórica</span>
+            </div>
+            <div class="rm-check-item ${isExDone ? 'checked' : ''}">
+              <span>${isExDone ? '✓' : '○'} 2. Laboratorio (${score}/100 pts)</span>
+            </div>
+          </div>
+          <div class="rm-action">
+            ${status !== 'locked' ? `
+              <button class="btn btn-primary btn-sm btn-roadmap-go" data-topic="${t.id}">
+                ${status === 'completed' ? 'Repasar Tema' : 'Continuar Tema'} &rarr;
+              </button>
+            ` : `
+              <span class="rm-locked-msg"><i class="icon">🔒</i> Bloqueado</span>
+            `}
+          </div>
+        </div>
+      `;
+    }).join("");
 
     container.innerHTML = `
       <div class="student-profile-wrapper">
@@ -446,6 +654,32 @@ const App = {
             <div class="progress-bar-container large">
               <div class="progress-bar-fill" style="width: ${metrics.totalPercent}%;"></div>
             </div>
+          </div>
+        </div>
+
+        <!-- Barra de Estado del Desbloqueo Secuencial -->
+        <div class="unlock-status-overview-card">
+          <div class="uso-header">
+            <h3><i class="icon">🗺️</i> Ruta de Desbloqueo Secuencial del Temario (20 Temas)</h3>
+            <p>El portal implementa una progresión pedagógica estricta: cada tema se desbloquea en automático únicamente cuando el anterior alcanza el <strong>100% de lectura</strong> y <strong>100/100 en el laboratorio</strong>.</p>
+          </div>
+          <div class="uso-stats-pills">
+            <div class="uso-pill pill-completed">
+              <span class="u-num">${completedCount}</span>
+              <span class="u-lbl">Temas Completados al 100%</span>
+            </div>
+            <div class="uso-pill pill-unlocked">
+              <span class="u-num">${unlockedCount}</span>
+              <span class="u-lbl">Temas en Curso / Desbloqueados</span>
+            </div>
+            <div class="uso-pill pill-locked">
+              <span class="u-num">${lockedCount}</span>
+              <span class="u-lbl">Temas Restantes Bloqueados</span>
+            </div>
+          </div>
+
+          <div class="roadmap-grid-container">
+            ${roadmapCardsHtml}
           </div>
         </div>
 
@@ -480,12 +714,19 @@ const App = {
         <div class="teacher-notes-card">
           <h4>Retroalimentación de tu Profesor Titular:</h4>
           <blockquote class="teacher-quote">
-            "${prog.generalFeedback || 'Continúa trabajando en tus ejercicios prácticos y lecturas para completar el 100% de tu avance.'}"
+            "${prog.generalFeedback || 'Continúa completando tus lecturas y laboratorios tema por tema para desbloquear la totalidad del curso.'}"
             <footer>— Ing. Luis Garibaldi, Profesor Titular y Super Administrador</footer>
           </blockquote>
         </div>
       </div>
     `;
+
+    container.querySelectorAll(".btn-roadmap-go").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this.selectedTopicId = btn.dataset.topic;
+        this.switchTab("tab_units");
+      });
+    });
   },
 
   // VISTA 4: CENTRO DE SINCRONIZACIÓN P2P
