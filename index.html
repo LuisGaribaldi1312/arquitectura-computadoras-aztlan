@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal de Arquitectura de Computadoras - Universidad Aztlán</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
+</head>
+<body>
+
+  <!-- ENCABEZADO INSTITUCIONAL -->
+  <header class="site-header">
+    <div class="brand-wrapper">
+      <div class="brand-logo-badge">UA</div>
+      <div class="brand-titles">
+        <h1><span class="inst">UNIVERSIDAD AZTLÁN</span> &bull; Arquitectura de Computadoras</h1>
+        <div class="brand-subtitle">
+          Sexto Cuatrimestre &bull; Clave 636 &bull; Profesor Titular: <strong>Ing. Luis Garibaldi</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <!-- Indicador P2P en Vivo -->
+      <div class="p2p-badge-container" id="p2p_header_indicator">
+        <span class="p2p-live-dot"></span>
+        <span class="p2p-text">P2P Sincronizado</span>
+      </div>
+
+      <!-- Selector y Perfil de Usuario -->
+      <div id="header_user_profile" class="header-user-profile"></div>
+    </div>
+  </header>
+
+  <!-- BARRA DE NAVEGACIÓN PRINCIPAL -->
+  <nav class="main-nav-bar" id="main_nav_tabs"></nav>
+
+  <!-- CONTENEDOR PRINCIPAL REACTIVO -->
+  <main class="app-main-viewport" id="main_content_view">
+    <div class="loading-state">Cargando plataforma educativa y conectando base de datos...</div>
+  </main>
+
+  <!-- PIE DE PÁGINA INSTITUCIONAL -->
+  <footer style="text-align: center; padding: 20px; font-size: 13px; color: #64748b; border-top: 1px solid #1e3352; margin-top: auto;">
+    <strong>Universidad Aztlán</strong> &bull; Centro de Estudios de Ingeniería en Sistemas Computacionales &bull; Asignatura: Arquitectura de Computadoras (Clave 636)<br>
+    Super Administrador y Profesor de la Plataforma: <strong>Ing. Luis Garibaldi</strong> (<code>luis.garibaldi@aztlan.edu.mx</code>)<br>
+    Sistema con Base de Datos Local Replicada y Sincronización P2P en Tiempo Real &bull; 2026
+  </footer>
+
+  <!-- ARCHIVOS JAVASCRIPT DEL SISTEMA -->
+  <script src="js/curriculum_data.js"></script>
+  <script src="js/simulators.js"></script>
+  <script src="js/database.js"></script>
+  <script src="js/p2p_sync.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/teacher_dashboard.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
