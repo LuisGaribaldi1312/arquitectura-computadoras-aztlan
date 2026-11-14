@@ -105,3 +105,28 @@ La plataforma calcula en tiempo real la calificación final ponderada (0 a 100) 
 1. Ejecuta el archivo `INICIAR_PORTAL.bat` ubicado en esta carpeta.
 2. El portal abrirá automáticamente en tu navegador web en `http://localhost:8080`.
 3. Para conectar a los alumnos en red local, comparte la dirección IP mostrada en la consola del servidor (ej. `http://192.168.x.x:8080`).
+
+---
+
+## 7. Sistema de Desbloqueo Secuencial Estricto (Progresión Pedagógica al 100%)
+
+Para garantizar que el estudiante comprenda cada tema antes de avanzar, el portal implementa una regla de progresión secuencial estricta:
+
+1. **Estado Inicial:**
+   - Únicamente el primer tema (**1.1.1 Arquitecturas Clásicas y Segmentadas**) se encuentra desbloqueado para comenzar.
+   - Los 19 temas restantes permanecen bloqueados (`🔒 Bloqueado`).
+2. **Criterio de Desbloqueo Doble (100% Obligatorio):**
+   - Un tema se considera **100% COMPLETADO** solo cuando el alumno cumple ambos requisitos:
+     1. **Lectura Teórica:** Marcar y confirmar la lectura comprensiva del material.
+     2. **Laboratorio Práctico:** Obtener una calificación perfecta de **100 / 100 pts** en el simulador interactivo de hardware.
+3. **Desbloqueo Automático:**
+   - En el instante en que el alumno acredita ambos requisitos del tema actual, el sistema ejecuta el desbloqueo automático del siguiente tema y despliega una ventana modal interactiva para avanzar de inmediato.
+4. **Protección en Toda la Plataforma:**
+   - En el menú lateral del temario, los temas bloqueados muestran el candado `🔒` y alertan al alumno sobre el prerrequisito faltante si intenta abrirlos.
+   - En el centro de simuladores, los ejercicios de temas bloqueados aparecen atenuados y deshabilitados.
+   - En la pestaña *Mi Avance*, el alumno cuenta con un mapa de ruta visual con el estado en vivo de los 20 temas (Completado en Verde, En Curso en Azul, Bloqueado en Gris).
+5. **Supervisión y Control del Super Administrador (Ing. Luis Garibaldi):**
+   - El profesor tiene acceso irrestricto e instantáneo a cualquier tema y simulador.
+   - En el *Panel de Control Docente*, el profesor visualiza en tiempo real qué tema tiene desbloqueado cada estudiante y cuántos ha completado.
+   - El profesor dispone del botón **"Bitácora de 20 Temas y Bloqueos"** para inspeccionar tema por tema el avance individual.
+   - Dispone además del control **"Desbloquear Todo / Restablecer Bloqueo"**, permitiéndole abrir todo el portal para un estudiante si requiere una revisión especial.
