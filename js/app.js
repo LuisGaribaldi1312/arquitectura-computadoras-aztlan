@@ -1,7 +1,8 @@
 /**
  * APLICACIÓN PRINCIPAL Y CONTROLADOR DE LA INTERFAZ DE USUARIO
- * Asignatura: Arquitectura de Computadoras - Universidad Aztlán
- * Profesor Titular: Ing. Luis Garibaldi
+ * Centro de Estudios: Universidad Aztlán
+ * Asignatura: Arquitectura de Computadoras (Clave 636)
+ * Profesor Titular & Super Administrador: Ing. Luis Garibaldi
  */
 
 const App = {
@@ -15,87 +16,203 @@ const App = {
     AuthService.init();
     P2PSyncEngine.init();
 
-    // 2. Renderizar Header y Barra de Navegación con permisos
-    this.renderHeader();
-    this.renderNav();
+    // 2. Renderizar Interfaz según estado de sesión
+    this.renderState();
 
-    // 3. Renderizar Contenido Inicial
-    this.switchTab(this.activeTab);
-
-    // 4. Suscribirse a eventos de datos y P2P
+    // 3. Suscribirse a eventos de datos y P2P
     Database.subscribe(() => {
-      this.refreshCurrentView();
+      if (AuthService.isAuthenticated()) {
+        this.refreshCurrentView();
+      }
     });
 
     P2PSyncEngine.onStatusChange((info) => {
       this.updateP2PStatusBadge(info);
     });
 
-    AuthService.onAuthChange(() => {
-      const perms = AuthService.getPermissions();
-      // Si el alumno estaba en el panel docente y se cambia de sesión, redirigir a unidades
-      if (!perms.canViewTeacherDashboard && this.activeTab === "tab_teacher_dashboard") {
-        this.activeTab = "tab_units";
+    AuthService.onAuthChange((user) => {
+      if (user) {
+        // Si el usuario es el Super Administrador, dirigir por defecto al Panel Docente
+        if (user.role === "admin") {
+          this.activeTab = "tab_teacher_dashboard";
+        } else {
+          this.activeTab = "tab_units";
+        }
       }
-      this.renderHeader();
-      this.renderNav();
-      this.refreshCurrentView();
+      this.renderState();
     });
   },
 
+  renderState() {
+    const isAuth = AuthService.isAuthenticated();
+    const navEl = document.getElementById("main_nav_tabs");
+    const contentArea = document.getElementById("main_content_view");
+
+    this.renderHeader();
+
+    if (!isAuth) {
+      if (navEl) navEl.style.display = "none";
+      if (contentArea) this.renderLoginView(contentArea);
+    } else {
+      if (navEl) navEl.style.display = "flex";
+      this.renderNav();
+      this.switchTab(this.activeTab);
+    }
+  },
+
+  // RENDERIZADO DEL ENCABEZADO
   renderHeader() {
     const user = AuthService.getCurrentUser();
-    const data = Database.getData();
     const headerUserEl = document.getElementById("header_user_profile");
     if (!headerUserEl) return;
 
-    let userOptions = data.users.map(u => `
-      <option value="${u.id}" ${u.id === user.id ? 'selected' : ''}>
-        ${u.avatar} ${u.name} (${u.role === 'admin' ? 'Profesor / Super Admin' : 'Alumno'})
-      </option>
-    `).join("");
+    if (!user) {
+      headerUserEl.innerHTML = `
+        <div class="user-pill-tag guest-pill">
+          <span class="avatar">🔒</span>
+          <div class="user-meta">
+            <span class="user-name">Portal Institucional</span>
+            <span class="user-role">Autenticación Requerida</span>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    const isAdmin = user.role === "admin";
 
     headerUserEl.innerHTML = `
-      <div class="user-switcher-container">
-        <label class="switcher-lbl">Sesión Activa:</label>
-        <select id="sel_switch_user" class="select-user">
-          ${userOptions}
-        </select>
-      </div>
-      <div class="user-pill-tag ${user.role === 'admin' ? 'admin-pill' : 'student-pill'}">
+      <div class="user-pill-tag ${isAdmin ? 'admin-pill' : 'student-pill'}">
         <span class="avatar">${user.avatar}</span>
         <div class="user-meta">
           <span class="user-name">${user.name}</span>
-          <span class="user-role">${user.role === 'admin' ? 'Super Administrador (100% Permisos)' : 'Alumno (Perfil Estudiante)'}</span>
+          <span class="user-role">${isAdmin ? 'Super Administrador (100% Permisos)' : 'Alumno (@aztlan.edu.mx)'}</span>
+        </div>
+      </div>
+      <button class="btn btn-outline-danger btn-sm" id="btn_logout_header" title="Cerrar Sesión Segura">
+        <i class="icon">🚪</i> Cerrar Sesión
+      </button>
+    `;
+
+    document.getElementById("btn_logout_header")?.addEventListener("click", () => {
+      if (confirm(`¿Deseas cerrar la sesión de ${user.name}?`)) {
+        AuthService.logout();
+        this.showToast("Sesión cerrada correctamente.");
+      }
+    });
+  },
+
+  // RENDERIZADO DE LA PANTALLA DE INICIO DE SESIÓN INSTITUCIONAL
+  renderLoginView(container) {
+    container.innerHTML = `
+      <div class="login-view-wrapper">
+        <div class="login-card-container">
+          <div class="login-header-banner">
+            <div class="login-logo-box">UA</div>
+            <h2>UNIVERSIDAD AZTLÁN</h2>
+            <p class="login-sub">Portal de Arquitectura de Computadoras &bull; Clave 636</p>
+            <span class="login-badge-sem">Sexto Cuatrimestre &bull; Modalidad Sabatina</span>
+          </div>
+
+          <form id="form_login_portal" class="login-form-box">
+            <div id="login_error_alert" class="alert alert-danger" style="display: none;"></div>
+
+            <div class="form-group">
+              <label for="login_email">Correo Institucional (@aztlan.edu.mx):</label>
+              <div class="input-with-icon">
+                <span class="input-icon">📧</span>
+                <input type="email" id="login_email" class="form-control" placeholder="ejemplo@aztlan.edu.mx" required autofocus>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="login_password">Contraseña Institucional:</label>
+              <div class="input-with-icon">
+                <span class="input-icon">🔑</span>
+                <input type="password" id="login_password" class="form-control" placeholder="••••••••••••" required>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="btn_submit_login">
+              <i class="icon">🔓</i> Iniciar Sesión en el Portal
+            </button>
+          </form>
+
+          <!-- Tarjetas de Acceso Rápido Institucional para Evaluación y Pruebas -->
+          <div class="login-quick-access-box">
+            <h4>Acceso Rápido con Credenciales Institucionales:</h4>
+            <div class="quick-credentials-list">
+              <!-- Botón Super Administrador -->
+              <div class="quick-cred-item admin-card" data-email="luis.garibaldi@aztlan.edu.mx" data-pass="ProfGaribaldi#2026">
+                <div class="qc-avatar">👨‍🏫</div>
+                <div class="qc-info">
+                  <strong>Ing. Luis Garibaldi</strong>
+                  <span>luis.garibaldi@aztlan.edu.mx</span>
+                  <span class="qc-role badge badge-warning">Super Administrador & Profesor (100% Permisos)</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-warning qc-fill-btn">Usar Cuenta</button>
+              </div>
+
+              <!-- Botón Alumno 1 -->
+              <div class="quick-cred-item student-card" data-email="mario.leyva@aztlan.edu.mx" data-pass="MarioLeyva#2026">
+                <div class="qc-avatar">👨‍🎓</div>
+                <div class="qc-info">
+                  <strong>Mario Leyva</strong>
+                  <span>mario.leyva@aztlan.edu.mx</span>
+                  <span class="qc-role badge badge-info">Alumno de Ingeniería</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary qc-fill-btn">Usar Cuenta</button>
+              </div>
+
+              <!-- Botón Alumno 2 -->
+              <div class="quick-cred-item student-card" data-email="isaias.lopez@aztlan.edu.mx" data-pass="IsaiasLopez#2026">
+                <div class="qc-avatar">👨‍💻</div>
+                <div class="qc-info">
+                  <strong>Isaías López</strong>
+                  <span>isaias.lopez@aztlan.edu.mx</span>
+                  <span class="qc-role badge badge-info">Alumno de Ingeniería</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary qc-fill-btn">Usar Cuenta</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     `;
 
-    document.getElementById("sel_switch_user").addEventListener("change", (e) => {
-      const selectedId = e.target.value;
-      const targetUser = data.users.find(u => u.id === selectedId);
+    const form = document.getElementById("form_login_portal");
+    const errBox = document.getElementById("login_error_alert");
+    const emailInp = document.getElementById("login_email");
+    const passInp = document.getElementById("login_password");
 
-      // Si se intenta cambiar a Super Administrador desde cuenta de alumno, solicitar clave
-      if (targetUser.role === "admin" && user.role !== "admin") {
-        const pass = prompt(`ACCESO RESTRINGIDO A SUPER ADMINISTRADOR:\nPor favor ingresa la contraseña de ${targetUser.name}:`);
-        if (!pass) {
-          e.target.value = user.id;
-          return;
-        }
-        const res = AuthService.switchUser(selectedId, pass);
-        if (!res.success) {
-          alert(res.message);
-          e.target.value = user.id;
-          return;
-        }
-        this.showToast(`Autenticado exitosamente como Super Administrador`);
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      errBox.style.display = "none";
+
+      const res = AuthService.login(emailInp.value, passInp.value);
+      if (res.success) {
+        App.showToast(`¡Bienvenido al portal, ${res.user.name}!`);
       } else {
-        AuthService.switchUser(selectedId);
-        this.showToast(`Sesión cambiada a: ${targetUser.name}`);
+        errBox.textContent = res.message;
+        errBox.style.display = "block";
       }
+    };
+
+    container.querySelectorAll(".quick-cred-item").forEach(item => {
+      item.onclick = () => {
+        emailInp.value = item.dataset.email;
+        passInp.value = item.dataset.pass;
+        errBox.style.display = "none";
+        // Auto-enviar para acceso con 1 clic
+        const res = AuthService.login(emailInp.value, passInp.value);
+        if (res.success) {
+          App.showToast(`Autenticado exitosamente como ${res.user.name}`);
+        }
+      };
     });
   },
 
+  // RENDERIZADO DE LA BARRA DE NAVEGACIÓN SEGÚN PERMISOS (RBAC)
   renderNav() {
     const user = AuthService.getCurrentUser();
     const perms = AuthService.getPermissions();
@@ -103,6 +220,11 @@ const App = {
     if (!navEl) return;
 
     navEl.innerHTML = `
+      ${perms.canViewTeacherDashboard ? `
+        <button class="nav-tab-btn admin-highlight ${this.activeTab === 'tab_teacher_dashboard' ? 'active' : ''}" data-tab="tab_teacher_dashboard">
+          <i class="icon">👨‍🏫</i> Panel Docente & Calificaciones (Super Admin)
+        </button>
+      ` : ''}
       <button class="nav-tab-btn ${this.activeTab === 'tab_units' ? 'active' : ''}" data-tab="tab_units">
         <i class="icon">📚</i> Temario y Unidades
       </button>
@@ -110,13 +232,8 @@ const App = {
         <i class="icon">🔬</i> Laboratorio de Simuladores
       </button>
       <button class="nav-tab-btn ${this.activeTab === 'tab_student_progress' ? 'active' : ''}" data-tab="tab_student_progress">
-        <i class="icon">📈</i> ${perms.canViewTeacherDashboard ? 'Mi Vista Alumno' : 'Mi Avance Académico'}
+        <i class="icon">📈</i> ${perms.canViewTeacherDashboard ? 'Vista Previa Alumno' : 'Mi Avance Académico & Rúbrica'}
       </button>
-      ${perms.canViewTeacherDashboard ? `
-        <button class="nav-tab-btn admin-highlight ${this.activeTab === 'tab_teacher_dashboard' ? 'active' : ''}" data-tab="tab_teacher_dashboard">
-          <i class="icon">👨‍🏫</i> Panel Docente & Calificaciones (Super Admin)
-        </button>
-      ` : ''}
       <button class="nav-tab-btn ${this.activeTab === 'tab_p2p_sync' ? 'active' : ''}" data-tab="tab_p2p_sync">
         <i class="icon">⚡</i> Sincronización P2P
       </button>
@@ -132,7 +249,7 @@ const App = {
   switchTab(tabId) {
     const perms = AuthService.getPermissions();
 
-    // Protección de ruta para el panel docente
+    // Protección estricta: Alumno no puede entrar al panel docente
     if (tabId === "tab_teacher_dashboard" && !perms.canViewTeacherDashboard) {
       alert("Acceso denegado: Esta sección es exclusiva para el Super Administrador y Profesor Titular (Ing. Luis Garibaldi).");
       this.activeTab = "tab_units";

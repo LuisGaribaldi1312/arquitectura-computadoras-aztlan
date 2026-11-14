@@ -1,94 +1,101 @@
 /**
- * SERVICIO DE AUTENTICACIÓN Y CONTROL DE ACCESO ESTRICTO (RBAC)
- * Asignatura: Arquitectura de Computadoras - Universidad Aztlán
- * Profesor Titular: Ing. Luis Garibaldi
+ * SERVICIO DE AUTENTICACIÓN INSTITUCIONAL Y CONTROL DE ACCESO (RBAC)
+ * Centro de Estudios: Universidad Aztlán
+ * Asignatura: Arquitectura de Computadoras (Clave 636)
+ * Profesor Titular & Super Administrador: Ing. Luis Garibaldi
  */
 
 const AuthService = {
-  CURRENT_USER_KEY: "AZTLAN_CURRENT_USER_SESSION",
+  CURRENT_USER_KEY: "AZTLAN_CURRENT_USER_SESSION_v3",
   authListeners: [],
 
   init() {
     const raw = localStorage.getItem(this.CURRENT_USER_KEY);
     if (!raw) {
-      // Por defecto, iniciar con la sesión del Profesor Titular
-      const defaultUser = Database.getDefaultUsers()[0];
-      this.setCurrentUser(defaultUser);
-      return defaultUser;
+      // Sin sesión iniciada: debe mostrar pantalla de login
+      return null;
     }
     try {
       return JSON.parse(raw);
     } catch {
-      const defaultUser = Database.getDefaultUsers()[0];
-      this.setCurrentUser(defaultUser);
-      return defaultUser;
+      localStorage.removeItem(this.CURRENT_USER_KEY);
+      return null;
     }
+  },
+
+  isAuthenticated() {
+    return this.getCurrentUser() !== null;
   },
 
   getCurrentUser() {
     const raw = localStorage.getItem(this.CURRENT_USER_KEY);
-    if (!raw) return this.init();
+    if (!raw) return null;
     try {
       return JSON.parse(raw);
     } catch {
-      return this.init();
+      return null;
     }
   },
 
   setCurrentUser(user) {
-    localStorage.setItem(this.CURRENT_USER_KEY, JSON.stringify(user));
+    if (user) {
+      localStorage.setItem(this.CURRENT_USER_KEY, JSON.stringify(user));
+    } else {
+      localStorage.removeItem(this.CURRENT_USER_KEY);
+    }
     this.notify(user);
   },
 
-  // Validación de inicio de sesión con contraseña
+  // Inicio de sesión formal con correo institucional y contraseña
   login(email, password) {
     const data = Database.getData();
-    const user = data.users.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
+    const cleanEmail = (email || "").trim().toLowerCase();
+    const cleanPass = (password || "").trim();
+
+    if (!cleanEmail || !cleanPass) {
+      return { success: false, message: "Por favor ingresa tanto tu correo institucional como tu contraseña." };
+    }
+
+    if (!cleanEmail.endsWith("@aztlan.edu.mx")) {
+      return { success: false, message: "Acceso denegado: El correo debe pertenecer al dominio oficial @aztlan.edu.mx." };
+    }
+
+    const user = data.users.find(u => u.email.toLowerCase() === cleanEmail);
     if (!user) {
-      return { success: false, message: "El correo electrónico no pertenece al dominio @aztlan.edu.mx" };
+      return { success: false, message: "Usuario no registrado en la lista de matrícula de la Universidad Aztlán." };
     }
-    if (user.password !== password) {
-      return { success: false, message: "Contraseña institucional incorrecta." };
+
+    if (user.password !== cleanPass) {
+      return { success: false, message: "Contraseña incorrecta. Verifica mayúsculas y caracteres especiales." };
     }
+
+    // Registrar en auditoría
+    data.auditLog.unshift({
+      timestamp: new Date().toISOString(),
+      userId: user.id,
+      action: "LOGIN_SUCCESS",
+      description: `Inicio de sesión exitoso como ${user.name} (${user.role === 'admin' ? 'Super Administrador' : 'Alumno'}).`
+    });
+    Database.save(data);
+
     this.setCurrentUser(user);
     return { success: true, user: user };
   },
 
-  // Cambio de usuario con validación de seguridad
-  switchUser(targetUserId, providedPassword = null) {
-    const data = Database.getData();
-    const targetUser = data.users.find(u => u.id === targetUserId);
-    if (!targetUser) return { success: false, message: "Usuario no encontrado." };
-
-    const currentUser = this.getCurrentUser();
-
-    // Si un alumno intenta cambiar a la cuenta de Super Administrador, exigir contraseña
-    if (targetUser.role === "admin" && currentUser.role !== "admin") {
-      if (!providedPassword) {
-        return { 
-          success: false, 
-          needsPassword: true, 
-          message: "Acceso protegido: Ingresa la contraseña del Super Administrador (Ing. Luis Garibaldi)." 
-        };
-      }
-      if (providedPassword !== targetUser.password) {
-        return { 
-          success: false, 
-          needsPassword: true, 
-          message: "Contraseña de Super Administrador incorrecta." 
-        };
-      }
-    }
-
-    this.setCurrentUser(targetUser);
-    return { success: true, user: targetUser };
-  },
-
+  // Cierre formal de sesión
   logout() {
-    // Si sale de sesión, regresar al login o usuario alumno por defecto
-    const students = Database.getDefaultUsers().filter(u => u.role === "student");
-    this.setCurrentUser(students[0]);
-    return students[0];
+    const user = this.getCurrentUser();
+    if (user) {
+      const data = Database.getData();
+      data.auditLog.unshift({
+        timestamp: new Date().toISOString(),
+        userId: user.id,
+        action: "LOGOUT",
+        description: `Sesión finalizada por ${user.name}.`
+      });
+      Database.save(data);
+    }
+    this.setCurrentUser(null);
   },
 
   isAdmin() {
@@ -101,7 +108,7 @@ const AuthService = {
     return user && user.role === "student";
   },
 
-  // Reglas de permisos estrictos del sistema (RBAC)
+  // Matriz de permisos RBAC estricta
   getPermissions() {
     const isAdmin = this.isAdmin();
     return {
@@ -111,7 +118,7 @@ const AuthService = {
       canPrintOfficialActs: isAdmin,
       canManageUsers: isAdmin,
       canImportDatabase: isAdmin,
-      canExportDatabase: true, // Alumnos pueden respaldar sus propios progresos
+      canExportDatabase: true, // Alumnos pueden exportar su propio avance
       canViewAllStudentsProgress: isAdmin,
       canHostP2PRoom: isAdmin,
       canSolveExercises: true,
