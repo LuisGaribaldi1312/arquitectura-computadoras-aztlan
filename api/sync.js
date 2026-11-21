@@ -3,11 +3,70 @@
  * Portal de Arquitectura de Computadoras - Universidad Aztlán
  */
 
-// Memoria compartida en la instancia del runtime
+const SEED_PROGRESS = {
+  "usr_mario": {
+    "userId": "usr_mario",
+    "readTopics": ["u1_1_1", "u1_1_2", "u1_2_1", "u1_2_2", "u1_2_3", "u1_2_4"],
+    "completedExercises": ["sim_von_neumann_harvard", "sim_pipeline_hazards", "sim_multiprocessing_numa", "sim_cpu_datapath", "sim_cache_memory", "sim_bus_arbitration"],
+    "scores": {
+      "sim_von_neumann_harvard": 100,
+      "sim_pipeline_hazards": 100,
+      "sim_multiprocessing_numa": 100,
+      "sim_cpu_datapath": 100,
+      "sim_cache_memory": 100,
+      "sim_bus_arbitration": 100
+    },
+    "exerciseAttempts": {
+      "sim_von_neumann_harvard": 1,
+      "sim_pipeline_hazards": 2,
+      "sim_multiprocessing_numa": 1,
+      "sim_cpu_datapath": 1,
+      "sim_cache_memory": 2,
+      "sim_bus_arbitration": 2
+    },
+    "timestamps": {
+      "sim_von_neumann_harvard": "2026-11-21T14:30:00.000Z",
+      "sim_pipeline_hazards": "2026-11-21T14:45:00.000Z",
+      "sim_multiprocessing_numa": "2026-11-21T15:00:00.000Z",
+      "sim_cpu_datapath": "2026-11-21T15:10:00.000Z",
+      "sim_cache_memory": "2026-11-21T15:20:00.000Z",
+      "sim_bus_arbitration": "2026-11-21T15:35:00.000Z"
+    },
+    "teacherFeedback": {},
+    "manualGrades": { "investigacion": 6, "reportes": 3, "proyectos": 6, "examenesParciales": 6, "examenFinal": 0 },
+    "generalFeedback": "Excelente avance continuo de Mario Leyva: 6 temas completados al 100% hasta el laboratorio de Buses Daisy-Chain.",
+    "lastActivity": "2026-11-21T15:35:00.000Z"
+  },
+  "usr_isaias": {
+    "userId": "usr_isaias",
+    "readTopics": ["u1_1_1", "u1_1_2", "u1_2_1"],
+    "completedExercises": ["sim_von_neumann_harvard", "sim_pipeline_hazards"],
+    "scores": {
+      "sim_von_neumann_harvard": 100,
+      "sim_pipeline_hazards": 100,
+      "sim_multiprocessing_numa": 85
+    },
+    "exerciseAttempts": {
+      "sim_von_neumann_harvard": 1,
+      "sim_pipeline_hazards": 2,
+      "sim_multiprocessing_numa": 1
+    },
+    "timestamps": {
+      "sim_von_neumann_harvard": "2026-11-21T14:15:00.000Z",
+      "sim_pipeline_hazards": "2026-11-21T14:35:00.000Z",
+      "sim_multiprocessing_numa": "2026-11-21T15:10:00.000Z"
+    },
+    "teacherFeedback": {},
+    "manualGrades": { "investigacion": 2, "reportes": 1, "proyectos": 2, "examenesParciales": 2, "examenFinal": 0 },
+    "generalFeedback": "Buen ritmo de trabajo, completando temas de la Unidad 1.",
+    "lastActivity": "2026-11-21T15:10:00.000Z"
+  }
+};
+
 let memoryDb = {
   version: 3,
   lastUpdated: new Date().toISOString(),
-  progress: {}
+  progress: { ...SEED_PROGRESS }
 };
 
 function mergeProgress(currentProgress, incomingProgress) {

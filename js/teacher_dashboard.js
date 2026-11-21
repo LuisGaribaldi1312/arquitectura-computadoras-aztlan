@@ -8,6 +8,7 @@ const TeacherDashboard = {
   render(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
+    this.startLiveMonitoring();
 
     const data = Database.getData();
     const students = data.users.filter(u => u.role === "student");
@@ -150,6 +151,12 @@ const TeacherDashboard = {
               <i class="icon">🔄</i> Reiniciar Avances a 0%
             </button>
           </div>
+        </div>
+
+        <!-- Cinta de Monitoreo Activo en Tiempo Real -->
+        <div class="live-monitoring-ribbon">
+          <span class="live-pulse-dot"></span>
+          <span><strong>Monitoreo Automático en Tiempo Real:</strong> Conectado a la Nube y Servidor Central &bull; Actualización continua del avance de alumnos</span>
         </div>
 
         <!-- Tarjetas de Resumen General -->
@@ -665,5 +672,17 @@ const TeacherDashboard = {
         }
       };
     };
+  },
+
+  // Monitoreo reactivo continuo: consulta el servidor cada 2.5s y actualiza los avances en pantalla
+  startLiveMonitoring() {
+    if (this._monitorTimer) clearInterval(this._monitorTimer);
+    this._monitorTimer = setInterval(async () => {
+      if (typeof AuthService !== 'undefined' && AuthService.isAdmin() && typeof App !== 'undefined' && App.activeTab === 'tab_teacher_dashboard') {
+        if (typeof P2PSyncEngine !== 'undefined' && P2PSyncEngine.syncWithServerApi) {
+          await P2PSyncEngine.syncWithServerApi();
+        }
+      }
+    }, 2500);
   }
 };
