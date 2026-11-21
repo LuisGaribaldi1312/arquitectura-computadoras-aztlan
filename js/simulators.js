@@ -886,39 +886,78 @@ const SimulatorEngine = {
       <div class="interactive-lab-card">
         <div class="lab-title-bar">
           <h4>Laboratorio de Buses: Arbitraje de Prioridad Daisy-Chain y Cálculo de Ancho de Banda</h4>
+          <span class="badge badge-info">Topología de Prioridad Física Serial</span>
         </div>
         <p class="lab-instruction">
-          <strong>Desafío Práctico:</strong> Tres dispositivos compiten simultáneamente por el bus del sistema: Dispositivo 1 (GPU), Dispositivo 2 (Tarjeta de Red 10G) y Dispositivo 3 (Controlador SSD).
-          Propaga la señal de concesión (<code>Bus Grant - BGRANT</code>) para observar cómo la topología Daisy-Chain resuelve el conflicto por proximidad física.
+          <strong>Desafío Práctico:</strong> Tres dispositivos compiten simultáneamente por el bus del sistema:
+          <strong>Dispositivo 1 (GPU)</strong>, <strong>Dispositivo 2 (Tarjeta de Red 10G)</strong> y <strong>Dispositivo 3 (Controlador SSD)</strong>.
+          Propaga la señal de concesión (<code>Bus Grant - BGRANT</code>) para observar cómo la topología en cascada (<em>Daisy-Chain</em>) resuelve el conflicto por proximidad física.
         </p>
 
+        <!-- Diagrama Interactivo Daisy-Chain -->
         <div class="daisy-chain-diagram">
-          <div class="arbiter-box">
-            <span>ÁRBITRO CENTRAL</span>
-            <div class="req-indicator" id="arbiter_req_light">BREQ: 3 Peticiones Activas</div>
+          <div class="arbiter-box" id="arbiter_main_box">
+            <span class="arbiter-title">⚡ ÁRBITRO CENTRAL</span>
+            <div class="req-indicator" id="arbiter_req_light">🔴 BREQ: 3 Peticiones Activas</div>
+            <div class="arbiter-state" id="arbiter_grant_state">BGRANT = Alto (1)</div>
           </div>
-          <div class="grant-wire">&rarr; BGRANT &rarr;</div>
+
+          <div class="grant-wire wire-active" id="wire_arbiter_d1">
+            <span class="wire-signal">→ BGRANT →</span>
+          </div>
+
           <div class="daisy-device" id="ddev_1">
-            <strong>Dispositivo 1: GPU</strong>
-            <span class="prio-tag">Prioridad 1 (Más cercana)</span>
-            <button class="btn btn-sm btn-primary" id="btn_grant_dev1">Interceptar Bus (GPU)</button>
+            <div class="dev-header">
+              <strong>Dispositivo 1: GPU</strong>
+              <span class="prio-tag prio-high">Prioridad 1 (Más cercana)</span>
+            </div>
+            <div class="dev-status-tag" id="status_dev1">Solicitando Bus...</div>
+            <div class="dev-action-box">
+              <button class="btn btn-sm btn-primary" id="btn_grant_dev1">1. Tomar Bus (GPU)</button>
+            </div>
           </div>
-          <div class="grant-wire">&rarr;</div>
+
+          <div class="grant-wire wire-idle" id="wire_d1_d2">
+            <span class="wire-signal" id="sig_d1_d2">→ En Espera →</span>
+          </div>
+
           <div class="daisy-device" id="ddev_2">
-            <strong>Dispositivo 2: NIC 10G</strong>
-            <span class="prio-tag">Prioridad 2</span>
-            <button class="btn btn-sm btn-secondary" id="btn_grant_dev2" disabled>Tomar Bus (NIC)</button>
+            <div class="dev-header">
+              <strong>Dispositivo 2: NIC 10G</strong>
+              <span class="prio-tag prio-med">Prioridad 2 (Intermedia)</span>
+            </div>
+            <div class="dev-status-tag" id="status_dev2">En espera de BGRANT</div>
+            <div class="dev-action-box">
+              <button class="btn btn-sm btn-secondary" id="btn_grant_dev2" disabled>Tomar Bus (NIC)</button>
+            </div>
           </div>
-          <div class="grant-wire">&rarr;</div>
+
+          <div class="grant-wire wire-idle" id="wire_d2_d3">
+            <span class="wire-signal" id="sig_d2_d3">→ En Espera →</span>
+          </div>
+
           <div class="daisy-device" id="ddev_3">
-            <strong>Dispositivo 3: SSD</strong>
-            <span class="prio-tag">Prioridad 3 (Más lejana)</span>
-            <button class="btn btn-sm btn-secondary" id="btn_grant_dev3" disabled>Tomar Bus (SSD)</button>
+            <div class="dev-header">
+              <strong>Dispositivo 3: SSD</strong>
+              <span class="prio-tag prio-low">Prioridad 3 (Más lejana)</span>
+            </div>
+            <div class="dev-status-tag" id="status_dev3">En espera de BGRANT</div>
+            <div class="dev-action-box">
+              <button class="btn btn-sm btn-secondary" id="btn_grant_dev3" disabled>Tomar Bus (SSD)</button>
+            </div>
           </div>
         </div>
 
+        <div class="daisy-reset-row" style="margin-top: 10px; text-align: right;">
+          <button class="btn btn-xs btn-outline-secondary" id="btn_reset_daisy">🔄 Reiniciar Prueba de Arbitraje</button>
+        </div>
+
+        <!-- Calculador Dinámico de Ancho de Banda -->
         <div class="bus-bw-calc-panel" style="margin-top: 20px;">
           <h5>Calculador Dinámico de Ancho de Banda Físico:</h5>
+          <p style="font-size: 13px; color: #94a3b8; margin-bottom: 12px;">
+            Fórmula de transferencia en bus síncrono: <code>Ancho de Banda = (Ancho de Bus en Bytes) × Frecuencia de Operación</code>
+          </p>
           <div class="form-row-2col">
             <label>Ancho del Bus de Datos:
               <select id="calc_b_width" class="form-control">
@@ -939,35 +978,196 @@ const SimulatorEngine = {
         </div>
 
         <div class="lab-verification-footer">
-          <div id="bus_lab_feedback" class="lab-feedback-banner">Intervén en el arbitraje de la GPU para comprobar la prioridad en Daisy-Chain.</div>
-          <button class="btn btn-success btn-lg" id="btn_complete_bus" disabled>✓ Acreditar Laboratorio de Buses (100 pts)</button>
+          <div id="bus_lab_feedback" class="lab-feedback-banner">
+            👉 <strong>Paso 1:</strong> La señal BGRANT ha salido del Árbitro Central hacia la GPU. Haz clic en <strong>"1. Tomar Bus (GPU)"</strong> para observar cómo intercepta la señal.
+          </div>
+          <button class="btn btn-success btn-lg" id="btn_complete_bus" disabled>
+            ✓ Acreditar Laboratorio de Buses (100 pts)
+          </button>
         </div>
       </div>
     `;
 
     const btnDev1 = document.getElementById("btn_grant_dev1");
     const btnDev2 = document.getElementById("btn_grant_dev2");
+    const btnDev3 = document.getElementById("btn_grant_dev3");
     const ddev1 = document.getElementById("ddev_1");
     const ddev2 = document.getElementById("ddev_2");
     const ddev3 = document.getElementById("ddev_3");
+    const statusDev1 = document.getElementById("status_dev1");
+    const statusDev2 = document.getElementById("status_dev2");
+    const statusDev3 = document.getElementById("status_dev3");
+    const wireD1D2 = document.getElementById("wire_d1_d2");
+    const wireD2D3 = document.getElementById("wire_d2_d3");
+    const sigD1D2 = document.getElementById("sig_d1_d2");
+    const sigD2D3 = document.getElementById("sig_d2_d3");
+    const arbiterReq = document.getElementById("arbiter_req_light");
+    const arbiterState = document.getElementById("arbiter_grant_state");
     const feedback = document.getElementById("bus_lab_feedback");
     const btnSubmit = document.getElementById("btn_complete_bus");
+    const btnReset = document.getElementById("btn_reset_daisy");
 
-    btnDev1.onclick = () => {
-      ddev1.classList.add("dev-has-bus");
-      btnDev1.disabled = true;
-      btnDev2.disabled = false;
-      feedback.textContent = "Dispositivo 1 (GPU) interceptó la señal BGRANT y bloquea el paso hacia los dispositivos 2 y 3. Ahora libera el bus para que avance al Dispositivo 2.";
-      btnDev1.textContent = "Liberar Bus";
+    function setupChain() {
+      // Estado Inicial
+      ddev1.className = "daisy-device";
+      ddev2.className = "daisy-device";
+      ddev3.className = "daisy-device";
+      statusDev1.textContent = "Solicitando Bus (BREQ)...";
+      statusDev1.style.color = "#fbbf24";
+      statusDev2.textContent = "En espera de BGRANT";
+      statusDev2.style.color = "#94a3b8";
+      statusDev3.textContent = "En espera de BGRANT";
+      statusDev3.style.color = "#94a3b8";
+
+      wireD1D2.className = "grant-wire wire-idle";
+      sigD1D2.textContent = "→ En Espera →";
+      wireD2D3.className = "grant-wire wire-idle";
+      sigD2D3.textContent = "→ En Espera →";
+
+      arbiterReq.textContent = "🔴 BREQ: 3 Peticiones Activas";
+      arbiterReq.style.background = "#991b1b";
+      arbiterState.textContent = "BGRANT = Alto (Emitida)";
+
+      btnDev1.disabled = false;
+      btnDev1.className = "btn btn-sm btn-primary";
+      btnDev1.textContent = "1. Tomar Bus (GPU)";
+
+      btnDev2.disabled = true;
+      btnDev2.className = "btn btn-sm btn-secondary";
+      btnDev2.textContent = "Tomar Bus (NIC)";
+
+      btnDev3.disabled = true;
+      btnDev3.className = "btn btn-sm btn-secondary";
+      btnDev3.textContent = "Tomar Bus (SSD)";
+
+      feedback.className = "lab-feedback-banner";
+      feedback.innerHTML = '👉 <strong>Paso 1:</strong> La señal BGRANT ha salido del Árbitro Central hacia la GPU. Haz clic en <strong>"1. Tomar Bus (GPU)"</strong> para observar cómo intercepta la señal.';
+
+      // PASO 1: GPU INTERCEPTA BGRANT
       btnDev1.onclick = () => {
-        ddev1.classList.remove("dev-has-bus");
-        ddev2.classList.add("dev-has-bus");
-        feedback.className = "lab-feedback-banner success";
-        feedback.innerHTML = "<strong>¡Arbitraje Comprobado!</strong> En Daisy-Chain, el dispositivo más cercano al árbitro siempre tiene prioridad física absoluta y puede generar inanición (starvation) en dispositivos lejanos si no libera el bus.";
-        btnSubmit.disabled = false;
+        ddev1.classList.add("dev-has-bus");
+        statusDev1.textContent = "🟢 GPU transmitiendo en el bus (BBUSY=1)";
+        statusDev1.style.color = "#34d399";
+
+        // Línea hacia NIC bloqueada por GPU
+        wireD1D2.className = "grant-wire wire-blocked";
+        sigD1D2.textContent = "⛔ BGRANT Interceptada por GPU";
+
+        feedback.className = "lab-feedback-banner warning";
+        feedback.innerHTML = "<strong>Dispositivo 1 (GPU) interceptó la señal BGRANT:</strong> Al ser el dispositivo más cercano físicamente al árbitro, toma el control del bus y bloquea el paso hacia los dispositivos 2 y 3 (inanición / starvation). Ahora haz clic en <strong>'2. Liberar Bus (GPU)'</strong> para que la señal avance al Dispositivo 2.";
+
+        // GPU pasa al estado de poder liberar el bus (¡HABILITADO!)
+        btnDev1.textContent = "2. Liberar Bus (GPU)";
+        btnDev1.className = "btn btn-sm btn-warning";
+        btnDev1.disabled = false;
+
+        // PASO 2: GPU LIBERA EL BUS Y PROPAGA BGRANT HACIA NIC
+        btnDev1.onclick = () => {
+          ddev1.classList.remove("dev-has-bus");
+          ddev1.classList.add("dev-done");
+          statusDev1.textContent = "✓ GPU terminó su transferencia";
+          statusDev1.style.color = "#94a3b8";
+          btnDev1.textContent = "✓ Bus Liberado";
+          btnDev1.className = "btn btn-sm btn-outline-secondary";
+          btnDev1.disabled = true;
+
+          arbiterReq.textContent = "🟡 BREQ: 2 Peticiones Activas";
+
+          // Señal fluye hacia NIC
+          wireD1D2.className = "grant-wire wire-active";
+          sigD1D2.textContent = "→ BGRANT Propagada →";
+
+          statusDev2.textContent = "🟡 BGRANT Recibida. Lista para transmitir.";
+          statusDev2.style.color = "#fbbf24";
+
+          btnDev2.disabled = false;
+          btnDev2.className = "btn btn-sm btn-primary";
+          btnDev2.textContent = "3. Tomar Bus (NIC)";
+
+          feedback.className = "lab-feedback-banner info";
+          feedback.innerHTML = "<strong>BGRANT propagada a NIC 10G:</strong> La GPU liberó el bus, permitiendo que la señal llegue a la segunda prioridad. Haz clic en <strong>'3. Tomar Bus (NIC)'</strong>.";
+
+          // PASO 3: NIC INTERCEPTA BGRANT
+          btnDev2.onclick = () => {
+            ddev2.classList.add("dev-has-bus");
+            statusDev2.textContent = "🟢 NIC transmitiendo paquetes (BBUSY=1)";
+            statusDev2.style.color = "#34d399";
+
+            wireD2D3.className = "grant-wire wire-blocked";
+            sigD2D3.textContent = "⛔ BGRANT Interceptada por NIC";
+
+            feedback.className = "lab-feedback-banner warning";
+            feedback.innerHTML = "<strong>NIC 10G transmitiendo:</strong> La NIC retiene el bus mientras envía paquetes de red. El SSD aún debe esperar. Haz clic en <strong>'4. Liberar Bus (NIC)'</strong> para dejar pasar la señal al SSD.";
+
+            btnDev2.textContent = "4. Liberar Bus (NIC)";
+            btnDev2.className = "btn btn-sm btn-warning";
+            btnDev2.disabled = false;
+
+            // PASO 4: NIC LIBERA EL BUS Y BGRANT LLEGA A SSD
+            btnDev2.onclick = () => {
+              ddev2.classList.remove("dev-has-bus");
+              ddev2.classList.add("dev-done");
+              statusDev2.textContent = "✓ NIC terminó su transferencia";
+              statusDev2.style.color = "#94a3b8";
+              btnDev2.textContent = "✓ Bus Liberado";
+              btnDev2.className = "btn btn-sm btn-outline-secondary";
+              btnDev2.disabled = true;
+
+              arbiterReq.textContent = "🟡 BREQ: 1 Petición Activa";
+
+              wireD2D3.className = "grant-wire wire-active";
+              sigD2D3.textContent = "→ BGRANT Propagada →";
+
+              statusDev3.textContent = "🟡 BGRANT Recibida en SSD.";
+              statusDev3.style.color = "#fbbf24";
+
+              btnDev3.disabled = false;
+              btnDev3.className = "btn btn-sm btn-primary";
+              btnDev3.textContent = "5. Tomar Bus (SSD)";
+
+              feedback.className = "lab-feedback-banner info";
+              feedback.innerHTML = "<strong>BGRANT llegó al final de la cadena:</strong> La señal finalmente alcanzó al Dispositivo 3 (Controlador SSD). Haz clic en <strong>'5. Tomar Bus (SSD)'</strong>.";
+
+              // PASO 5: SSD TOMA EL BUS Y COMPLETA EL CICLO
+              btnDev3.onclick = () => {
+                ddev3.classList.add("dev-has-bus");
+                statusDev3.textContent = "🟢 SSD escribiendo bloques (BBUSY=1)";
+                statusDev3.style.color = "#34d399";
+                btnDev3.textContent = "Procesando...";
+                btnDev3.disabled = true;
+
+                setTimeout(() => {
+                  ddev3.classList.remove("dev-has-bus");
+                  ddev3.classList.add("dev-done");
+                  statusDev3.textContent = "✓ Transferencia SSD Completada";
+                  statusDev3.style.color = "#34d399";
+                  btnDev3.textContent = "✓ Transmisión Finalizada";
+                  btnDev3.className = "btn btn-sm btn-outline-success";
+
+                  arbiterReq.textContent = "🟢 BREQ: 0 Peticiones (Todas Atendidas)";
+                  arbiterReq.style.background = "#065f46";
+                  arbiterState.textContent = "BGRANT = Inactivo (Bus Libre)";
+
+                  feedback.className = "lab-feedback-banner success";
+                  feedback.innerHTML = "<strong>🎉 ¡Arbitraje Daisy-Chain y Ancho de Banda Comprobados al 100%!</strong> Has demostrado cómo la prioridad física serial resuelve colisiones: la GPU tuvo prioridad máxima por proximidad, y los dispositivos 2 y 3 fueron atendidos ordenadamente a medida que los anteriores liberaron el bus. <strong>Haz clic en el botón verde inferior para acreditar este laboratorio con 100 pts y desbloquear el siguiente tema.</strong>";
+
+                  btnSubmit.disabled = false;
+                  btnSubmit.classList.add("pulse-success-btn");
+                  btnSubmit.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 500);
+              };
+            };
+          };
+        };
       };
+    }
+
+    setupChain();
+    btnReset.onclick = () => {
+      setupChain();
     };
 
+    // Calculador de Ancho de Banda
     const wSel = document.getElementById("calc_b_width");
     const fRng = document.getElementById("rng_b_freq");
     const fLbl = document.getElementById("lbl_rng_freq");
@@ -986,7 +1186,7 @@ const SimulatorEngine = {
 
     btnSubmit.onclick = () => {
       if (onComplete) onComplete(exerciseId, 100);
-      btnSubmit.textContent = "✓ Acreditado en Base de Datos";
+      btnSubmit.textContent = "✓ Acreditado con 100 pts en Base de Datos";
       btnSubmit.disabled = true;
     };
   },

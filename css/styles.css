@@ -1908,15 +1908,92 @@ body {
   border-color: #10b981 !important;
 }
 
-/* Daisy Chain diagram */
+/* Daisy Chain diagram and interactive modules */
 .daisy-chain-diagram {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: stretch;
+  gap: 8px;
   background: #050b14;
-  padding: 16px;
+  padding: 18px 14px;
   border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
   overflow-x: auto;
+}
+
+.arbiter-box {
+  background: linear-gradient(180deg, #0e1e38 0%, #081120 100%);
+  border: 2px solid #2563eb;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.arbiter-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #93c5fd;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.req-indicator {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #991b1b;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.arbiter-state {
+  font-size: 11px;
+  color: #60a5fa;
+  font-family: var(--font-mono);
+}
+
+.grant-wire {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  min-width: 110px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  border-radius: 4px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.wire-active {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid #10b981;
+  color: #34d399;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+  animation: pulseWire 1.5s infinite alternate;
+}
+
+.wire-blocked {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px dashed #ef4444;
+  color: #f87171;
+}
+
+.wire-idle {
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px dotted #475569;
+  color: #64748b;
+}
+
+@keyframes pulseWire {
+  from { opacity: 0.8; }
+  to { opacity: 1; }
 }
 
 .daisy-device {
@@ -1924,14 +2001,83 @@ body {
   border: 1px solid var(--border-color);
   padding: 12px;
   border-radius: var(--radius-sm);
-  min-width: 140px;
+  min-width: 165px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   text-align: center;
+  transition: all 0.3s ease;
+}
+
+.dev-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.dev-header strong {
+  font-size: 13px;
+  color: #f1f5f9;
+}
+
+.prio-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.prio-high {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.prio-med {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.prio-low {
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+.dev-status-tag {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  margin: 6px 0 10px 0;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dev-action-box button {
+  width: 100%;
 }
 
 .dev-has-bus {
   border-color: #10b981 !important;
-  background: rgba(16, 185, 129, 0.2) !important;
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4) !important;
+  background: rgba(16, 185, 129, 0.22) !important;
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.45) !important;
+}
+
+.dev-done {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  opacity: 0.85;
+}
+
+.pulse-success-btn {
+  animation: pulseGreenBtn 1.2s infinite alternate;
+}
+
+@keyframes pulseGreenBtn {
+  from { transform: scale(1); box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+  to { transform: scale(1.03); box-shadow: 0 0 20px rgba(16, 185, 129, 0.8); }
 }
 
 /* Stack slots */
