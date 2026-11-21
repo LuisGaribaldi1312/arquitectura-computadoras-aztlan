@@ -1,234 +1,277 @@
 /**
- * MOTOR DE SINCRONIZACIÓN Y REPLICACIÓN P2P (PEER-TO-PEER) EN TIEMPO REAL
+ * MOTOR DE SINCRONIZACIÓN EN TIEMPO REAL MULTI-NIVEL
+ * (Nube MQTT + API Central /api/sync + BroadcastChannel Local)
  * Asignatura: Arquitectura de Computadoras - Universidad Aztlán
- * Profesor Titular: Ing. Luis Garibaldi
+ * Profesor Titular & Super Administrador: Ing. Luis Garibaldi
  */
 
 const P2PSyncEngine = {
   channelName: "aztlan_arq_p2p_channel",
+  mqttTopicPrefix: "universidad_aztlan/arq_comp_636",
   broadcastChannel: null,
-  peerConnection: null,
-  dataChannel: null,
-  status: "idle", // 'idle' | 'connected' | 'syncing' | 'error'
-  peersCount: 1,
+  mqttClient: null,
+  status: "idle", // 'connected' | 'syncing' | 'error' | 'idle'
+  connectedSources: [],
   lastSyncTimestamp: null,
+  pollTimer: null,
   listeners: [],
 
   init() {
-    // 1. Inicialización de sincronización por BroadcastChannel (para pestañas/ventanas concurrentes)
+    this.lastSyncTimestamp = new Date();
+
+    // 1. Iniciar canal de difusión local entre pestañas (BroadcastChannel)
     try {
       if (typeof BroadcastChannel !== "undefined") {
         this.broadcastChannel = new BroadcastChannel(this.channelName);
         this.broadcastChannel.onmessage = (event) => {
-          this.handleIncomingP2PMessage(event.data);
+          this.handleIncomingMessage(event.data, "BroadcastChannel");
         };
+        this.connectedSources.push("Pestañas Locales");
       }
     } catch (e) {
-      console.warn("BroadcastChannel no soportado en este entorno", e);
+      console.warn("BroadcastChannel no disponible:", e);
     }
 
-    // Escuchar cambios locales de la base de datos para difundirlos por P2P
+    // 2. Iniciar conexión en tiempo real a la Nube (MQTT sobre WebSockets)
+    this.initMqttCloudSync();
+
+    // 3. Iniciar sincronización periódica con el Servidor Central (/api/sync)
+    this.initServerPolling();
+
+    // 4. Suscribirse a cambios locales de base de datos para difundirlos automáticamente
     Database.subscribe((updatedDb) => {
       this.broadcastLocalState(updatedDb);
     });
 
-    this.lastSyncTimestamp = new Date();
     this.status = "connected";
     this.notifyStatus();
+
+    // Sincronizar de inmediato al arrancar
+    setTimeout(() => {
+      this.syncWithServerApi();
+      this.publishMyStudentStateIfApplicable();
+    }, 1000);
   },
 
-  // Manejo de mensajes P2P recibidos
-  handleIncomingP2PMessage(msg) {
-    if (!msg || !msg.type) return;
+  // =========================================================================
+  // 1. CAPA NUBE: MQTT SOBRE WEBSOCKETS (Sincronización en vivo entre cualquier PC)
+  // =========================================================================
+  initMqttCloudSync() {
+    if (typeof mqtt === "undefined") {
+      console.warn("Librería MQTT no cargada, continuando con API y BroadcastChannel.");
+      return;
+    }
 
-    if (msg.type === "SYNC_STATE") {
-      console.log("⚡ Mensaje P2P recibido: Sincronización de estado", msg.sender);
-      const local = Database.getData();
-      // Fusionar progresos si la marca de tiempo entrante es válida
-      if (msg.payload && msg.payload.progress) {
-        let changed = false;
-        Object.keys(msg.payload.progress).forEach((studentId) => {
-          const remoteSt = msg.payload.progress[studentId];
-          const localSt = local.progress[studentId] || Database.getDefaultStudentProgress(studentId);
+    const clientId = "aztlan_" + Math.random().toString(16).substring(2, 10);
+    const brokerUrl = "wss://broker.emqx.io:8084/mqtt";
 
-          // Combinar lecturas
-          remoteSt.readTopics?.forEach((t) => {
-            if (!localSt.readTopics.includes(t)) {
-              localSt.readTopics.push(t);
-              changed = true;
-            }
-          });
+    try {
+      this.mqttClient = mqtt.connect(brokerUrl, {
+        clientId: clientId,
+        clean: true,
+        connectTimeout: 5000,
+        reconnectPeriod: 4000
+      });
 
-          // Combinar ejercicios completados
-          remoteSt.completedExercises?.forEach((ex) => {
-            if (!localSt.completedExercises.includes(ex)) {
-              localSt.completedExercises.push(ex);
-              changed = true;
-            }
-          });
+      this.mqttClient.on("connect", () => {
+        console.log("⚡ Conectado a la Nube de Sincronización en Tiempo Real (MQTT)");
+        if (!this.connectedSources.includes("Nube en Vivo")) {
+          this.connectedSources.push("Nube en Vivo");
+        }
+        this.status = "connected";
+        this.notifyStatus();
 
-          // Combinar calificaciones
-          if (remoteSt.scores) {
-            Object.keys(remoteSt.scores).forEach((exId) => {
-              const rScore = remoteSt.scores[exId];
-              const lScore = localSt.scores[exId] || 0;
-              if (rScore > lScore) {
-                localSt.scores[exId] = rScore;
-                changed = true;
-              }
-            });
+        // Suscribirse al canal general y a los canales individuales de alumnos
+        this.mqttClient.subscribe(this.mqttTopicPrefix + "/sync_all", { qos: 1 });
+        this.mqttClient.subscribe(this.mqttTopicPrefix + "/student/+", { qos: 1 });
+
+        // Publicar de inmediato el estado actual retenido
+        this.publishMyStudentStateIfApplicable();
+      });
+
+      this.mqttClient.on("message", (topic, message) => {
+        try {
+          const payload = JSON.parse(message.toString());
+          this.handleIncomingMessage(payload, "Nube MQTT");
+        } catch (err) {
+          console.warn("Mensaje MQTT no legible:", err);
+        }
+      });
+
+      this.mqttClient.on("error", (err) => {
+        console.warn("Aviso conexión MQTT:", err);
+      });
+    } catch (e) {
+      console.warn("No se pudo iniciar MQTT:", e);
+    }
+  },
+
+  publishMyStudentStateIfApplicable() {
+    const user = AuthService.getCurrentUser();
+    const data = Database.getData();
+    if (!user) return;
+
+    if (user.role === "student" && this.mqttClient && this.mqttClient.connected) {
+      const myProgress = data.progress[user.id];
+      if (myProgress) {
+        const payload = {
+          type: "STUDENT_PROGRESS_UPDATE",
+          studentId: user.id,
+          progress: { [user.id]: myProgress },
+          sender: user.email,
+          timestamp: new Date().toISOString()
+        };
+        // Publicar con retain=true para que el profesor lo reciba al instante en que abra su sesión
+        this.mqttClient.publish(
+          this.mqttTopicPrefix + "/student/" + user.id,
+          JSON.stringify(payload),
+          { qos: 1, retain: true }
+        );
+      }
+    }
+  },
+
+  // =========================================================================
+  // 2. CAPA SERVIDOR: API REST /api/sync (Local, LAN y Vercel)
+  // =========================================================================
+  initServerPolling() {
+    // Sincronizar periódicamente cada 3.5 segundos en segundo plano
+    this.pollTimer = setInterval(() => {
+      this.syncWithServerApi();
+    }, 3500);
+  },
+
+  async syncWithServerApi() {
+    try {
+      // 1. GET para consultar si hay avances de otros alumnos en el servidor
+      const res = await fetch("/api/sync", {
+        method: "GET",
+        headers: { "Cache-Control": "no-cache" }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && data.progress) {
+          const changed = Database.mergeIncomingProgress(data.progress);
+          if (changed) {
+            console.log("⚡ Avances de alumnos sincronizados desde el Servidor Central");
+            this.lastSyncTimestamp = new Date();
+            this.notifyStatus();
           }
-
-          // Combinar observaciones del profesor
-          if (remoteSt.generalFeedback) {
-            localSt.generalFeedback = remoteSt.generalFeedback;
+          if (!this.connectedSources.includes("Servidor Central")) {
+            this.connectedSources.push("Servidor Central");
           }
-          if (remoteSt.manualGrades) {
-            localSt.manualGrades = { ...localSt.manualGrades, ...remoteSt.manualGrades };
-          }
-        });
-
-        if (changed) {
-          local.lastUpdated = new Date().toISOString();
-          localStorage.setItem(Database.DB_KEY, JSON.stringify(local));
-          Database.notify(local);
         }
       }
-
-      this.lastSyncTimestamp = new Date();
-      this.status = "connected";
-      this.notifyStatus();
-    } else if (msg.type === "PEER_PING") {
-      this.peersCount++;
-      this.notifyStatus();
+    } catch (e) {
+      // Entorno puramente estático o servidor apagado
     }
   },
 
-  // Difundir estado local a la red P2P
+  async pushToServerApi(progressData) {
+    try {
+      const res = await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ progress: progressData })
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result && result.progress) {
+          Database.mergeIncomingProgress(result.progress);
+        }
+      }
+    } catch (e) {
+      // Servidor local no disponible, la nube MQTT y localStorage respaldan los datos
+    }
+  },
+
+  // =========================================================================
+  // 3. PROCESAMIENTO CENTRAL DE MENSAJES Y DIFUSIÓN
+  // =========================================================================
+  handleIncomingMessage(msg, sourceName) {
+    if (!msg) return;
+
+    const currentEmail = AuthService.getCurrentUser()?.email;
+    // Evitar procesar nuestros propios ecos
+    if (msg.sender && currentEmail && msg.sender.toLowerCase() === currentEmail.toLowerCase()) {
+      return;
+    }
+
+    if (msg.progress || (msg.payload && msg.payload.progress)) {
+      const incomingProg = msg.progress || msg.payload.progress;
+      const changed = Database.mergeIncomingProgress(incomingProg);
+      if (changed) {
+        console.log(`⚡ Sincronización en vivo recibida vía [${sourceName}]:`, msg.sender || "Alumno");
+        this.lastSyncTimestamp = new Date();
+        this.status = "connected";
+        this.notifyStatus();
+      }
+    }
+  },
+
+  // Difundir estado local a todas las capas (BroadcastChannel, MQTT y /api/sync)
   broadcastLocalState(dbData) {
-    const msg = {
+    const user = AuthService.getCurrentUser();
+    const payload = {
       type: "SYNC_STATE",
-      sender: AuthService.getCurrentUser()?.email || "anonymous",
+      sender: user?.email || "anonymous",
       timestamp: new Date().toISOString(),
-      payload: dbData
+      progress: dbData.progress
     };
 
-    // Vía BroadcastChannel
+    // 1. BroadcastChannel
     if (this.broadcastChannel) {
       try {
-        this.broadcastChannel.postMessage(msg);
+        this.broadcastChannel.postMessage(payload);
+      } catch (e) {}
+    }
+
+    // 2. Nube MQTT
+    if (this.mqttClient && this.mqttClient.connected) {
+      try {
+        if (user && user.role === "student") {
+          // Publicación retenida para este estudiante
+          this.mqttClient.publish(
+            this.mqttTopicPrefix + "/student/" + user.id,
+            JSON.stringify(payload),
+            { qos: 1, retain: true }
+          );
+        }
+        // Publicación al canal general
+        this.mqttClient.publish(
+          this.mqttTopicPrefix + "/sync_all",
+          JSON.stringify(payload),
+          { qos: 1 }
+        );
       } catch (e) {
-        console.warn("Fallo al difundir por BroadcastChannel", e);
+        console.warn("Fallo publicando en MQTT:", e);
       }
     }
 
-    // Vía WebRTC DataChannel si está activo
-    if (this.dataChannel && this.dataChannel.readyState === "open") {
-      try {
-        this.dataChannel.send(JSON.stringify(msg));
-      } catch (e) {
-        console.warn("Fallo al enviar por WebRTC DataChannel", e);
-      }
-    }
+    // 3. API Central del Servidor
+    this.pushToServerApi(dbData.progress);
 
     this.lastSyncTimestamp = new Date();
     this.notifyStatus();
   },
 
-  // Crear oferta WebRTC P2P (Rol: Anfitrión / Profesor)
-  async createWebRtcOffer() {
-    const config = {
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-    };
-    this.peerConnection = new RTCPeerConnection(config);
+  // Forzar sincronización manual inmediata
+  async forceSyncNow() {
+    this.status = "syncing";
+    this.notifyStatus();
 
-    this.dataChannel = this.peerConnection.createDataChannel("aztlan_arq_sync");
-    this.setupDataChannelEvents();
+    const localData = Database.getData();
+    this.broadcastLocalState(localData);
+    await this.syncWithServerApi();
 
-    return new Promise((resolve, reject) => {
-      this.peerConnection.onicecandidate = (event) => {
-        if (!event.candidate) {
-          // Candidatos ICE completos: retornar SDP comprimido en Base64
-          const offerStr = JSON.stringify(this.peerConnection.localDescription);
-          resolve(btoa(encodeURIComponent(offerStr)));
-        }
-      };
+    this.status = "connected";
+    this.lastSyncTimestamp = new Date();
+    this.notifyStatus();
 
-      this.peerConnection.createOffer()
-        .then(offer => this.peerConnection.setLocalDescription(offer))
-        .catch(err => reject(err));
-    });
-  },
-
-  // Aceptar oferta WebRTC y generar respuesta (Rol: Alumno)
-  async acceptWebRtcOffer(offerBase64) {
-    try {
-      const offerJson = decodeURIComponent(atob(offerBase64));
-      const offer = JSON.parse(offerJson);
-
-      const config = {
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-      };
-      this.peerConnection = new RTCPeerConnection(config);
-
-      this.peerConnection.ondatachannel = (event) => {
-        this.dataChannel = event.channel;
-        this.setupDataChannelEvents();
-      };
-
-      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await this.peerConnection.createAnswer();
-      await this.peerConnection.setLocalDescription(answer);
-
-      return new Promise((resolve) => {
-        this.peerConnection.onicecandidate = (event) => {
-          if (!event.candidate) {
-            const answerStr = JSON.stringify(this.peerConnection.localDescription);
-            resolve(btoa(encodeURIComponent(answerStr)));
-          }
-        };
-      });
-    } catch (e) {
-      throw new Error("Código de oferta P2P inválido: " + e.message);
+    if (typeof App !== "undefined" && App.showToast) {
+      App.showToast("✓ Sincronización en tiempo real completada. Avances de alumnos actualizados.");
     }
-  },
-
-  // Finalizar enlace con la respuesta WebRTC (Rol: Profesor)
-  async finalizeWebRtcConnection(answerBase64) {
-    try {
-      const answerJson = decodeURIComponent(atob(answerBase64));
-      const answer = JSON.parse(answerJson);
-      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-      return true;
-    } catch (e) {
-      throw new Error("Código de respuesta P2P inválido: " + e.message);
-    }
-  },
-
-  setupDataChannelEvents() {
-    if (!this.dataChannel) return;
-    this.dataChannel.onopen = () => {
-      console.log("🔌 Canal de Datos WebRTC P2P Conectado con Éxito");
-      this.status = "connected";
-      this.peersCount = 2;
-      this.notifyStatus();
-      // Enviar de inmediato el estado actual al conectarse
-      this.broadcastLocalState(Database.getData());
-    };
-
-    this.dataChannel.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        this.handleIncomingP2PMessage(msg);
-      } catch (e) {
-        console.error("Error al procesar mensaje WebRTC", e);
-      }
-    };
-
-    this.dataChannel.onclose = () => {
-      this.status = "idle";
-      this.notifyStatus();
-    };
   },
 
   onStatusChange(fn) {
@@ -238,8 +281,8 @@ const P2PSyncEngine = {
   notifyStatus() {
     const info = {
       status: this.status,
-      peersCount: this.peersCount,
-      lastSync: this.lastSyncTimestamp ? this.lastSyncTimestamp.toLocaleTimeString() : "--"
+      sources: this.connectedSources,
+      lastSync: this.lastSyncTimestamp ? this.lastSyncTimestamp.toLocaleTimeString() : "Conectando..."
     };
     this.listeners.forEach(fn => fn(info));
   }

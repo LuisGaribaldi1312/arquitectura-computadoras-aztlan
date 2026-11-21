@@ -8,35 +8,138 @@ const Database = {
   DB_KEY: "AZTLAN_ARQ_COMP_DB_v3",
   listeners: [],
 
-  // Inicialización de la base de datos con usuarios y datos predeterminados en 0%
+  // Inicialización de la base de datos con usuarios y recuperación segura de avances
   init() {
-    // Limpieza de versiones previas de pruebas
-    localStorage.removeItem("AZTLAN_ARQ_COMP_DB_v1");
-    localStorage.removeItem("AZTLAN_ARQ_COMP_DB_v2");
-
     let raw = localStorage.getItem(this.DB_KEY);
+    let state = null;
     if (!raw) {
-      const defaultState = this.getDefaultState();
-      this.save(defaultState);
-      return defaultState;
+      state = this.getDefaultState();
+    } else {
+      try {
+        state = JSON.parse(raw);
+      } catch (e) {
+        state = this.getDefaultState();
+      }
     }
+
+    // Asegurar que existan todos los usuarios requeridos
+    const defaultUsers = this.getDefaultUsers();
+    defaultUsers.forEach(u => {
+      if (!state.users.find(x => x.email === u.email)) {
+        state.users.push(u);
+      }
+    });
+
+    // RECUPERAR Y PRESERVAR AVANCES PREVIOS (v1, v2) SI EXISTEN (¡NUNCA BORRAR AVANCES!)
     try {
-      const parsed = JSON.parse(raw);
-      // Asegurar que existan todos los usuarios requeridos
-      const defaultUsers = this.getDefaultUsers();
-      defaultUsers.forEach(u => {
-        if (!parsed.users.find(x => x.email === u.email)) {
-          parsed.users.push(u);
+      ["AZTLAN_ARQ_COMP_DB_v2", "AZTLAN_ARQ_COMP_DB_v1"].forEach(oldKey => {
+        const oldRaw = localStorage.getItem(oldKey);
+        if (oldRaw) {
+          const oldDb = JSON.parse(oldRaw);
+          if (oldDb && oldDb.progress) {
+            this.mergeProgressObjects(state.progress, oldDb.progress);
+          }
         }
       });
-      this.save(parsed);
-      return parsed;
-    } catch (e) {
-      console.error("Error al parsear base de datos, restaurando predeterminada en 0%", e);
-      const defaultState = this.getDefaultState();
-      this.save(defaultState);
-      return defaultState;
+    } catch (err) {
+      console.warn("Aviso recuperación de versiones previas:", err);
     }
+
+    this.save(state);
+    return state;
+  },
+
+  // Fusión aditiva segura de progresos de alumnos (NUNCA elimina ni reduce avance)
+  mergeProgressObjects(targetProgress, incomingProgress) {
+    if (!incomingProgress) return false;
+    let changed = false;
+
+    Object.keys(incomingProgress).forEach(stId => {
+      if (!targetProgress[stId]) {
+        targetProgress[stId] = this.getDefaultStudentProgress(stId);
+      }
+      const target = targetProgress[stId];
+      const incoming = incomingProgress[stId];
+      if (!incoming) return;
+
+      // 1. Lecturas (Unión estricta)
+      if (Array.isArray(incoming.readTopics)) {
+        incoming.readTopics.forEach(tId => {
+          if (!target.readTopics.includes(tId)) {
+            target.readTopics.push(tId);
+            changed = true;
+          }
+        });
+      }
+
+      // 2. Ejercicios completados (Unión estricta)
+      if (Array.isArray(incoming.completedExercises)) {
+        incoming.completedExercises.forEach(exId => {
+          if (!target.completedExercises.includes(exId)) {
+            target.completedExercises.push(exId);
+            changed = true;
+          }
+        });
+      }
+
+      // 3. Calificaciones (Siempre la puntuación más alta conseguida)
+      if (incoming.scores && typeof incoming.scores === "object") {
+        if (!target.scores) target.scores = {};
+        Object.keys(incoming.scores).forEach(exId => {
+          const inScore = Number(incoming.scores[exId]) || 0;
+          const currScore = Number(target.scores[exId]) || 0;
+          if (inScore > currScore) {
+            target.scores[exId] = inScore;
+            changed = true;
+          }
+        });
+      }
+
+      // 4. Intentos
+      if (incoming.exerciseAttempts && typeof incoming.exerciseAttempts === "object") {
+        if (!target.exerciseAttempts) target.exerciseAttempts = {};
+        Object.keys(incoming.exerciseAttempts).forEach(exId => {
+          target.exerciseAttempts[exId] = Math.max(target.exerciseAttempts[exId] || 0, Number(incoming.exerciseAttempts[exId]) || 0);
+        });
+      }
+
+      // 5. Timestamps
+      if (incoming.timestamps && typeof incoming.timestamps === "object") {
+        target.timestamps = { ...(target.timestamps || {}), ...incoming.timestamps };
+      }
+
+      // 6. Desbloqueo manual
+      if (Array.isArray(incoming.manuallyUnlockedTopics)) {
+        if (!target.manuallyUnlockedTopics) target.manuallyUnlockedTopics = [];
+        incoming.manuallyUnlockedTopics.forEach(u => {
+          if (!target.manuallyUnlockedTopics.includes(u)) {
+            target.manuallyUnlockedTopics.push(u);
+            changed = true;
+          }
+        });
+      }
+
+      // 7. Última actividad
+      if (incoming.lastActivity) {
+        if (!target.lastActivity || new Date(incoming.lastActivity) > new Date(target.lastActivity)) {
+          target.lastActivity = incoming.lastActivity;
+        }
+      }
+    });
+
+    return changed;
+  },
+
+  // Método público para incorporar actualizaciones entrantes de la red o nube
+  mergeIncomingProgress(incomingProgress) {
+    const data = this.getData();
+    const changed = this.mergeProgressObjects(data.progress, incomingProgress);
+    if (changed) {
+      data.lastUpdated = new Date().toISOString();
+      localStorage.setItem(this.DB_KEY, JSON.stringify(data));
+      this.notify(data);
+    }
+    return changed;
   },
 
   getDefaultUsers() {

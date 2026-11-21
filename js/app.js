@@ -236,6 +236,11 @@ const App = {
   },
 
   refreshCurrentView() {
+    const evalModal = document.getElementById("eval_modal");
+    if (evalModal && evalModal.style.display === "flex") {
+      // Si el profesor está en el modal de evaluación o bitácora, no cerrarlo
+      return;
+    }
     this.switchTab(this.activeTab);
   },
 
@@ -833,10 +838,13 @@ Para desbloquear este laboratorio interactivo, primero debes completar al 100% t
   updateP2PStatusBadge(info) {
     const badge = document.getElementById("p2p_header_indicator");
     if (!badge) return;
+    const isOnline = info.status === "connected";
+    const sourceLabel = info.sources && info.sources.length ? info.sources.join(" + ") : "Enlace Activo";
     badge.innerHTML = `
-      <span class="p2p-live-dot ${info.status === 'connected' ? 'online' : 'syncing'}"></span>
-      <span class="p2p-text">P2P Sincronizado (${info.lastSync})</span>
+      <span class="p2p-live-dot ${isOnline ? 'online' : 'syncing'}"></span>
+      <span class="p2p-text">Sincronizado en Vivo (${info.lastSync})</span>
     `;
+    badge.title = `Fuentes activas: ${sourceLabel}. Actualización en tiempo real sin recargar página.`;
   },
 
   showToast(message) {

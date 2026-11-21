@@ -140,8 +140,11 @@ const TeacherDashboard = {
             <button class="btn btn-outline-light" id="btn_export_grades_pdf">
               <i class="icon">🖨️</i> Generar Acta Oficial de Calificaciones
             </button>
+            <button class="btn btn-outline-success" id="btn_force_sync_now" title="Sincronizar de inmediato con la nube y los alumnos">
+              <i class="icon">⚡</i> Sincronizar en Vivo Ahora
+            </button>
             <button class="btn btn-outline-light" id="btn_p2p_room_modal">
-              <i class="icon">🌐</i> Gestionar Sala P2P en Vivo
+              <i class="icon">🌐</i> Estado de Red y Nube
             </button>
             <button class="btn btn-outline-danger" id="btn_reset_all_students" title="Reiniciar el avance de todos los alumnos a 0%">
               <i class="icon">🔄</i> Reiniciar Avances a 0%
@@ -287,6 +290,14 @@ const TeacherDashboard = {
           App.showToast("Todos los avances de los alumnos se han reiniciado al 0%.");
           TeacherDashboard.render("main_content_view");
         }
+      });
+    }
+
+    // Botón para forzar sincronización en vivo
+    const btnForceSync = document.getElementById("btn_force_sync_now");
+    if (btnForceSync) {
+      btnForceSync.addEventListener("click", () => {
+        P2PSyncEngine.forceSyncNow();
       });
     }
 
